@@ -1,19 +1,44 @@
 import 'package:flutter/material.dart';
+import 'map_screen.dart'; // Import your new map screen file
 
 void main() {
-  runApp(const MainApp());
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue)),
+    return MaterialApp(
+      title: 'Flutter Map Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+      ),
+      body: Center(
+        child: ElevatedButton(
+          child: const Text('Open Map'),
+          onPressed: () {
+            // Navigate to the MapScreen when the button is pressed
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MapScreen()),
+            );
+          },
         ),
       ),
     );

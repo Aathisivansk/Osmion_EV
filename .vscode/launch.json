@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter (main.dart)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart"
+    },
+    {
+      "name": "DEV: Home Feature",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/features/home/main_home.dart"
+    },
+    {
+      "name": "DEV: Profile Feature",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/features/profile/main_profile.dart"
+    },
+    {
+      "name": "DEV: Auth Feature",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/features/auth/main_auth.dart"
+    },
+    {
+      "name": "DEV: Map Feature",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/features/map/main_map.dart"
+    }
+  ]
+}

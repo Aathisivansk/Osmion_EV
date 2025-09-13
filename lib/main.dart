@@ -1,23 +1,25 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
-import 'login.dart'; // Import your login page
-
+import 'login.dart'; // Make sure this file exists in the lib folder';
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  // Updated to use a super parameter for the key.
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'My App',
+      debugShowCheckedModeBanner: false,
+      title: 'Flutter Login UI',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.green,
+        fontFamily: 'Inter',
       ),
-      home: const LoginScreen(), // Set your login screen as the home
-      debugShowCheckedModeBanner: false, // Removes debug banner
+      // Corrected to use the actual class name: LoginScreen
+      home: const LoginScreen(),
     );
   }
 }
+

@@ -4,6 +4,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -18,12 +20,16 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _initialCenter;
   StreamSubscription<Position>? _positionStreamSubscription;
   bool _followUser = false; // State to control follow behavior
+  List<Marker> _stationMarkers = [];
 
   @override
-  void initState() {
-    super.initState();
-    _initializeLocationAndMap();
-  }
+void initState() {
+  super.initState();
+  _initializeLocationAndMap().then((_) {
+    // Fetch station data after the map is ready
+    _fetchChargingStations();
+  });
+}
 
   Future<void> _initializeLocationAndMap() async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -62,6 +68,63 @@ class _MapScreenState extends State<MapScreen> {
       });
     }
   }
+
+  Future<void> _fetchChargingStations() async {
+  // IMPORTANT: Replace with your actual API endpoint URL
+  final url = Uri.parse('https://your-api.com/api/stations');
+
+  try {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      final List<Marker> loadedMarkers = [];
+
+      for (var station in data) {
+        loadedMarkers.add(
+          Marker(
+            point: LatLng(station['latitude'], station['longitude']),
+            width: 80,
+            height: 80,
+            child: GestureDetector(
+              onTap: () {
+                // Show a dialog or snackbar with station info
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(station['stationName']),
+                    content: Text('Coordinates: ${station['latitude']}, ${station['longitude']}'),
+                    actions: [
+                      TextButton(
+                        child: const Text('Close'),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Icon(
+                Icons.ev_station,
+                color: Colors.purple,
+                size: 40,
+              ),
+            ),
+          ),
+        );
+      }
+
+      setState(() {
+        _stationMarkers = loadedMarkers;
+      });
+    } else {
+      // Handle server error
+      print('Failed to load stations. Status code: ${response.statusCode}');
+    }
+  } catch (e) {
+    // Handle network error
+    print('Error fetching stations: $e');
+  }
+}
 
   void _startFollowingUser() {
     if (_followUser) {
@@ -120,6 +183,7 @@ class _MapScreenState extends State<MapScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.osmion',
               ),
+              MarkerLayer(markers: _stationMarkers),
               CurrentLocationLayer(
                 style: LocationMarkerStyle(
                   marker: DefaultLocationMarker(

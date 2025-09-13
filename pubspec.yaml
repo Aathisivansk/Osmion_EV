@@ -20,6 +20,9 @@ dependencies:
   # Plugin for the user's location marker
   flutter_map_location_marker: ^9.0.1
 
+  # Server communication
+  http: ^1.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

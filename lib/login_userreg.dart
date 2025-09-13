@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// import 'map_picker_page.dart'; // No longer needed
+import 'login_cardet.dart'; // Import the new car details page
 
 class UserRegisterPage extends StatefulWidget {
   final String email;
@@ -98,12 +100,11 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
                         controller: _emailController,
                         label: 'Mail*',
                         labelColor: labelColor,
-                        readOnly: true, // Mail is pre-filled and not editable
+                        readOnly: true,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Email cannot be empty';
                           }
-                          // Standard email validation regex
                           final bool emailValid = RegExp(
                                   r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
                               .hasMatch(value);
@@ -113,6 +114,7 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
                           return null;
                         }),
                     const SizedBox(height: 20),
+                    // MODIFIED: Reverted to a standard text field for the address
                     _buildTextField(
                       controller: _addressController,
                       label: 'Address*',
@@ -169,15 +171,14 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // This will now only run if all validators pass
                           if (_formKey.currentState!.validate()) {
-                            // TODO: Implement registration logic and navigate to next page
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Registration Successful!')),
+                            // This is the change: Navigates to the car details page
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const CarDetailsPage()),
                             );
-                            // Example of navigating to a new page after success
-                            // Navigator.push(context, MaterialPageRoute(builder: (context) => HomePage()));
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -237,5 +238,4 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
     );
   }
 }
-
 

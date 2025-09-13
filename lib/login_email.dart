@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'login_verify.dart'; // Import the new verification page
 
 class EmailLoginPage extends StatefulWidget {
-  const EmailLoginPage({super.key, required String email});
+  final String email; // Accept the email
+  const EmailLoginPage({super.key, required this.email});
 
   @override
   State<EmailLoginPage> createState() => _EmailLoginPageState();
@@ -9,7 +11,14 @@ class EmailLoginPage extends StatefulWidget {
 
 class _EmailLoginPageState extends State<EmailLoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  late TextEditingController _emailController;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill the text field with the passed email
+    _emailController = TextEditingController(text: widget.email);
+  }
 
   @override
   void dispose() {
@@ -116,6 +125,9 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
                       if (!emailValid) {
                         return 'Please enter a valid email address.';
                       }
+                      if (value != widget.email) {
+                        return 'Please enter the same email address.';
+                      }
                       return null;
                     },
                   ),
@@ -124,12 +136,22 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
+                        // This now gives feedback if validation fails
                         if (_formKey.currentState!.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Verification mail sent!')),
+                          // Navigate to the verification page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LoginVerifyPage(
+                                  email: _emailController.text),
+                            ),
                           );
-                          // TODO: Add logic to send verification email
+                        } else {
+                          // Show a message if the form is not valid
+                           ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Please correct the errors before proceeding.')),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(

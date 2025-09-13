@@ -1,8 +1,7 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'login_email.dart'; // Import the correct page
 
 class LoginScreen extends StatefulWidget {
-  // Updated to use a super parameter for the key.
   const LoginScreen({super.key});
 
   @override
@@ -21,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showTermsDialog() {
-    // Define the colors from the image
     const Color primaryTextColor = Color(0xFF0A4F37);
     const Color secondaryColor = Color(0xFFDDFCDA);
 
@@ -44,15 +42,12 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               'Please read these terms and conditions carefully before using Our Service.\n\n'
               'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. '
-              'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. '
-              'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. '
-              'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+              'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
               style: TextStyle(color: Colors.black87),
             ),
           ),
           actionsAlignment: MainAxisAlignment.center,
           actions: <Widget>[
-            // Deny Button
             OutlinedButton(
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: primaryTextColor),
@@ -66,7 +61,6 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
             const SizedBox(width: 10),
-            // Accept Button
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: secondaryColor,
@@ -92,17 +86,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Define the colors from the image
     const Color primaryTextColor = Color(0xFF0A4F37);
     const Color secondaryColor = Color(0xFFDDFCDA);
-    const Color accentColor = Color(0xFF8B5CF6); // Purple for the underline
+    const Color accentColor = Color(0xFF8B5CF6);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
-            // The top wave-like container
             ClipPath(
               clipper: WaveClipper(),
               child: Container(
@@ -118,7 +110,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
                     const SizedBox(height: 20),
-                    // Welcome Text
                     const Text(
                       'WELCOME',
                       style: TextStyle(
@@ -129,15 +120,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // Thin divider line
                     Container(
                       width: 150,
                       height: 1,
                       color: primaryTextColor,
                     ),
                     const SizedBox(height: 60),
-
-                    // Email Label
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -150,8 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 5),
-
-                    // Email Text Field
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -175,7 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email.';
                         }
-                        // Standard email validation regex
                         final bool emailValid = RegExp(
                                 r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
                             .hasMatch(value);
@@ -186,25 +171,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 30),
-
-                    // Terms and Conditions
                     InkWell(
                       onTap: _showTermsDialog,
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
                         children: <Widget>[
-                          SizedBox(
-                            height: 24.0,
-                            width: 24.0,
-                            child: Checkbox(
-                              value: _isChecked,
-                              // Checkbox is now non-interactive, controlled by the dialog
-                              onChanged: (bool? value) {},
-                              activeColor: primaryTextColor,
-                              checkColor: Colors.white,
-                              side: const BorderSide(
-                                  color: primaryTextColor, width: 1.5),
-                            ),
+                          // Replaced Checkbox with an Icon to match the design
+                          Icon(
+                            _isChecked
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked_outlined,
+                            color: primaryTextColor,
+                            size: 24.0,
                           ),
                           const SizedBox(width: 10),
                           const Expanded(
@@ -213,7 +190,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.black54,
-                                  fontFamily: 'Inter',
                                 ),
                                 children: [
                                   TextSpan(text: 'I agree to the '),
@@ -233,20 +209,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 50),
-
-                    // Continue Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Validate form before proceeding
                           if (_formKey.currentState!.validate()) {
                             if (_isChecked) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Login Successful!')),
+                              // Pass the email to the next page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EmailLoginPage(
+                                      email: _emailController.text),
+                                ),
                               );
-                              // TODO: Navigate to the next page here
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -292,29 +268,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// CustomClipper for the wave effect
 class WaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     var path = Path();
-    path.lineTo(0, size.height - 50); // Start from the bottom-left
-
-    // First curve
+    path.lineTo(0, size.height - 50);
     var firstControlPoint = Offset(size.width / 4, size.height);
     var firstEndPoint = Offset(size.width / 2.25, size.height - 30.0);
     path.quadraticBezierTo(firstControlPoint.dx, firstControlPoint.dy,
         firstEndPoint.dx, firstEndPoint.dy);
-
-    // Second curve
     var secondControlPoint =
         Offset(size.width - (size.width / 3.25), size.height - 65);
     var secondEndPoint = Offset(size.width, size.height - 40);
     path.quadraticBezierTo(secondControlPoint.dx, secondControlPoint.dy,
         secondEndPoint.dx, secondEndPoint.dy);
-
-    path.lineTo(size.width, 0); // Line to top-right
+    path.lineTo(size.width, 0);
     path.close();
-
     return path;
   }
 

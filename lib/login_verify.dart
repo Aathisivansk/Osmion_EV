@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'login_userreg.dart'; // Import the new registration page
 
 class LoginVerifyPage extends StatefulWidget {
   final String email;
@@ -119,11 +120,20 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
                       final otp = _otpControllers.map((c) => c.text).join();
                       if (otp.length == 4) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('OTP Verified!')),
+                          const SnackBar(
+                              content: Text('OTP Verified! Proceeding to registration...')),
+                        );
+                        // Navigate to the user registration page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserRegisterPage(email: widget.email),
+                          ),
                         );
                       } else {
-                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter the full OTP.')),
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Please enter the full OTP.')),
                         );
                       }
                     },
@@ -177,3 +187,4 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
     );
   }
 }
+

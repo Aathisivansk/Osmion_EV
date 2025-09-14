@@ -55,7 +55,7 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
       email: _emailController.text,
       address: _addressController.text,
       pincode: _pincodeController.text,
-      mobile: _mobileController.text,
+      mobile: _mobileController.text, password: '',
     );
     
     // Hide the loading circle

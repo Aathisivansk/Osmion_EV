@@ -56,30 +56,43 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Banner image
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                image: const DecorationImage(
-                  image: AssetImage("assets/banner.png"), // <-- Add your banner image
+            // ======= Single Banner =======
+            // Uses the asset you added: assets/banner.png
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                height: 140,
+                width: double.infinity,
+                color: Colors.grey.shade200,
+                child: Image.asset(
+                  'assets/banner1.jpg',
                   fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Friendly message if image fails to load
+                    return Container(
+                      color: Colors.grey.shade300,
+                      alignment: Alignment.center,
+                      child: const Text('Banner not found', style: TextStyle(color: Colors.black54)),
+                    );
+                  },
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
 
-            // Features list
+            // ===== Features list =====
             Expanded(
               child: ListView(
                 children: [
                   _buildFeatureCard(Icons.card_giftcard, "Reward"),
                   const SizedBox(height: 15),
-                  _buildFeatureCard(Icons.flight_takeoff, "Plan a trip"),
+                  _buildFeatureCard(Icons.shopping_bag, "Plan a trip"),
                   const SizedBox(height: 15),
-                  _buildFeatureCard(Icons.public, "Host"),
+                  _buildFeatureCard(Icons.wifi, "Host"),
                   const SizedBox(height: 15),
-                  _buildFeatureCard(Icons.event_available, "Book a slot"),
+                  _buildFeatureCard(Icons.cable, "Book a slot"),
                 ],
               ),
             ),
@@ -97,7 +110,7 @@ class HomePage extends StatelessWidget {
           BottomNavigationBarItem(icon: Icon(Icons.location_on), label: "Location"),
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: "Community"),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: "Wallet"),
+          BottomNavigationBarItem(icon: Icon(Icons.currency_rupee), label: "Wallet"),
         ],
       ),
     );

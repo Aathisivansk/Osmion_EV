@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:osmion/explore/map_screen.dart';
 import 'package:osmion/community/community_feed_screen.dart';
+import 'package:osmion/profile/profile_page.dart';
 
 void main() {
   runApp(const HomePage());
@@ -22,6 +23,12 @@ class HomePage extends StatelessWidget {
           MaterialPageRoute(builder: (context) => const CommunityFeedScreen()));
     }
 
+    // Function to navigate to ProfileScreen
+    void navigateToProfileScreen() {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const ProfilePage()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFE9FBEF),
       appBar: AppBar(
@@ -29,7 +36,12 @@ class HomePage extends StatelessWidget {
         elevation: 0,
         title: Row(
           children: [
-            const Icon(Icons.account_circle, size: 32, color: Colors.black),
+            GestureDetector(
+              onTap:
+                  navigateToProfileScreen, // Navigate to ProfileScreen on tap
+              child: const Icon(Icons.account_circle,
+                  size: 32, color: Colors.black),
+            ),
             const SizedBox(width: 8),
             const Text(
               "OSMION",

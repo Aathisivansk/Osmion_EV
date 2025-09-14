@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
-import 'login.dart'; // Make sure this file exists in the lib folder';
+import 'wallet.dart'; // Import the wallet page file
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  // Updated to use a super parameter for the key.
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // This title is for the app itself, not visible on the page
+      title: 'Osmion Wallet',
+      // This removes the "debug" banner from the top right
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Login UI',
       theme: ThemeData(
-        primarySwatch: Colors.green,
-        fontFamily: 'Inter',
+        fontFamily: 'Inter', // Optional: sets a default font
       ),
-      // Corrected to use the actual class name: LoginScreen
-      home: const LoginScreen(),
+      // This is the most important line:
+      // It sets your WalletPage as the first and only screen.
+      home: WalletPage(),
     );
   }
 }
-
-
-

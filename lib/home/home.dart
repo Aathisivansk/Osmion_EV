@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:osmion/explore/map_screen.dart';
+import 'package:osmion/community/community_feed_screen.dart';
 
 void main() {
   runApp(const HomePage());
@@ -6,9 +8,20 @@ void main() {
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
   @override
   Widget build(BuildContext context) {
+    // Function to navigate to MapScreen
+    void navigateToMapScreen() {
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => const MapScreen()));
+    }
+
+    // Function to navigate to CommunityFeedScreen
+    void navigateToCommunityFeedScreen() {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const CommunityFeedScreen()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFE9FBEF),
       appBar: AppBar(
@@ -79,8 +92,17 @@ class HomePage extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.black54,
+        onTap: (index) {
+          // Handle navigation on tap
+          if (index == 0) {
+            navigateToMapScreen(); // Navigate to MapScreen when location icon is tapped
+          } else if (index == 2) {
+            // Navigate to CommunityFeedScreen when community icon is tapped
+            navigateToCommunityFeedScreen();
+          }
+        },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.location_on), label: "Location"),
+          BottomNavigationBarItem(icon: Icon(Icons.location_pin), label: "Location"),
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: "Community"),
           BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: "Wallet"),

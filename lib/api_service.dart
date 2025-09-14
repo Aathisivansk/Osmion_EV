@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'community/models.dart';
 
 class ApiService {
 
@@ -116,5 +117,104 @@ class ApiService {
       return {'statusCode': 500, 'body': {'message': 'Network error: ${e.toString()}'}};
     }
   }
+
+  // NEW: Function to get username by email
+  static Future<Map<String, dynamic>> getUsernameByEmail(String email) async {
+    final url = Uri.parse('$_baseUrl/api/get_username');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      return {'statusCode': response.statusCode, 'body': jsonDecode(response.body)};
+    } catch (e) {
+      return {'statusCode': 500, 'body': {'message': 'Network error: ${e.toString()}'}};
+    }
+  }
+
+//   ===================================================================================================================================
+  Future<List<Post>> fetchPosts() async {
+    final response = await http.get(Uri.parse('$_baseUrl/posts'));
+
+    if (response.statusCode == 200) {
+      List<dynamic> body = jsonDecode(response.body);
+      List<Post> posts = body.map((dynamic item) => Post.fromJson(item)).toList();
+      return posts;
+    } else {
+      throw Exception('Failed to load posts');
+    }
+  }
+
+  // Create a new post
+  Future<Post> createPost(String title, String content, String email) async {
+    // Fetch username using the email
+    final usernameResponse = await getUsernameByEmail(email);
+    String username = 'Anonymous'; // Default username
+    if (usernameResponse['statusCode'] == 200 && usernameResponse['body']['username'] != null) {
+      username = usernameResponse['body']['username'];
+    }
+    final response = await http.post(
+      Uri.parse('$_baseUrl/posts/create'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'title': title,
+        'content': content,
+        'username': username, // Use fetched username
+        'userAvatarUrl': 'https://i.pravatar.cc/150?u=$username', // Optionally, make avatar URL dynamic too
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      return Post.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to create post.');
+    }
+  }
+
+  // Fetch comments for a specific post
+  Future<List<Comment>> fetchComments(String postId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/post/$postId/comments'));
+
+    if (response.statusCode == 200) {
+      List<dynamic> body = jsonDecode(response.body);
+      List<Comment> comments = body.map((dynamic item) => Comment.fromJson(item)).toList();
+      return comments;
+    } else {
+      throw Exception('Failed to load comments');
+    }
+  }
+
+  // Add a comment to a post
+  Future<Comment> addComment(String postId, String text, String email) async {
+    // Fetch username using the email
+    final usernameResponse = await getUsernameByEmail(email);
+    String username = 'Anonymous'; // Default username
+    if (usernameResponse['statusCode'] == 200 && usernameResponse['body']['username'] != null) {
+      username = usernameResponse['body']['username'];
+    } else {
+      // Handle error or use a default/guest username
+      print('Failed to fetch username for comment: ${usernameResponse['body']['message']}');
+    }
+    final response = await http.post(
+      Uri.parse('$_baseUrl/post/$postId/comment'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'text': text,
+        'username': username, // Use fetched username
+        'userAvatarUrl': 'https://i.pravatar.cc/150?u=$username', // Optionally, make avatar URL dynamic
+      }),
+    );
+    if (response.statusCode == 201) {
+      return Comment.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to add comment.');
+    }
+  }
+
 }
 

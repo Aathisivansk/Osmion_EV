@@ -11,6 +11,15 @@ dependencies:
     sdk: flutter
   http: ^1.5.0
   shared_preferences: ^2.2.3
+  flutter_map: ^7.0.1
+  latlong2: ^0.9.1
+
+  # For getting device location
+  geolocator: ^13.0.4
+
+  # Plugin for the user's location marker
+  flutter_map_location_marker: ^9.0.1
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,3 @@
-// lib/create_post_screen.dart
-
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 

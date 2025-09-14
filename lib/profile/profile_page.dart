@@ -47,8 +47,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  // For Android Emulator, 10.0.2.2 points to your computer's localhost.
-  // Make sure your backend server is running on port 5000.
   final String baseUrl = "http://10.62.58.114:5000";
 
   @override

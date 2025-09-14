@@ -10,7 +10,7 @@ class ApiService {
 
   // Fetch all posts from the server
   Future<List<Post>> fetchPosts() async {
-    final response = await http.get(Uri.parse('http://10.62.58.114:5000/api/posts'));
+    final response = await http.get(Uri.parse('$_baseUrl/posts'));
 
     if (response.statusCode == 200) {
       List<dynamic> body = jsonDecode(response.body);
@@ -44,7 +44,6 @@ class ApiService {
     }
   }
 
-  // Fetch comments for a specific post
   Future<List<Comment>> fetchComments(String postId) async {
     final response = await http.get(Uri.parse('$_baseUrl/post/$postId/comments'));
 
@@ -57,7 +56,6 @@ class ApiService {
     }
   }
 
-  // Add a comment to a post
   Future<Comment> addComment(String postId, String text) async {
     String? name = await _storage.read(key: 'name');
     final response = await http.post(

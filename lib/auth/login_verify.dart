@@ -99,6 +99,7 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
           // If the user already exists, save session and go to home
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_email', response['body']['user']['email']);
+          await prefs.setString('userName', response['body']['user']['name']);
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login Successful!')),

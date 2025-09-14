@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:osmion/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // 1. Import the new API service file
 import 'login_cardet.dart'; // Import the car details page
 
@@ -66,6 +67,8 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
     // Handle the server's response
     if (response['statusCode'] == 201) { // 201 means "Created" successfully
       // Navigate to the next page on success
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userName', _nameController.text);
       if (mounted) {
         Navigator.pushAndRemoveUntil(
             context,

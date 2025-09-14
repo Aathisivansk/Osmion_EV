@@ -1,11 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -16,71 +16,74 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
+
+  // Use a StreamController<double?> for alignPositionStream (zoom level optional)
+  final StreamController<double?> _alignPositionStreamController =
+      StreamController<double?>();
+
   bool _isMapReady = false;
   LatLng? _initialCenter;
-  StreamSubscription<Position>? _positionStreamSubscription;
-  bool _followUser = false; // State to control follow behavior
+
+  List<Map<String, dynamic>> _allStations = [];
   List<Marker> _stationMarkers = [];
 
   @override
-void initState() {
-  super.initState();
-  _initializeLocationAndMap().then((_) {
-    // Fetch station data after the map is ready
-    _fetchChargingStations();
-  });
-}
+  void initState() {
+    super.initState();
+    _initializeLocationAndMap().then((_) {
+      if (mounted) {
+        _fetchChargingStations();
+      }
+    });
+  }
 
   Future<void> _initializeLocationAndMap() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        // Handle case where permission is still denied
-        print("Location permission denied.");
-        setState(() {
-          _initialCenter = LatLng(12.9716, 77.5946); // Default to Bangalore
-          _isMapReady = true;
-        });
-        return;
-      }
     }
-
     try {
-      Position position = await Geolocator.getCurrentPosition( // Get initial position once
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
+      Position position = await Geolocator.getPositionStream(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 1),
+      ).first;
       setState(() {
         _initialCenter = LatLng(position.latitude, position.longitude);
         _isMapReady = true;
-        _followUser = true; // Optionally start following by default
       });
-
-      // Start listening to position updates for continuous tracking if _followUser is true
-      _startFollowingUser();
-
     } catch (e) {
-      print("Error fetching initial location: $e");
+      // fallback center (Bangalore)
+      debugPrint("Error fetching initial location: $e");
       setState(() {
-        _initialCenter = LatLng(12.9716, 77.5946); // Bangalore
+        _initialCenter = LatLng(12.9716, 77.5946);
         _isMapReady = true;
       });
     }
   }
 
   Future<void> _fetchChargingStations() async {
-  // IMPORTANT: Replace with your actual API endpoint URL
-  final url = Uri.parse('https://your-api.com/api/stations');
+  // Make sure to use your actual server IP, 10.0.2.2 is for the Android Emulator
+  final url = Uri.parse('http://10.62.58.114:5000/api/stations');
 
   try {
     final response = await http.get(url);
-
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
-      final List<Marker> loadedMarkers = [];
+      
+      // DEBUG PRINT: Check if data is loaded and how many stations.
+      print('--- API FETCH SUCCESS ---');
+      print('Loaded ${data.length} stations from the API.');
+      if (data.isNotEmpty) {
+        // DEBUG PRINT: Check the raw name of the first station. Quotes will reveal whitespace.
+        print('Raw name of first station: "${data[0]['stationName']}"');
+      }
+      print('--------------------------');
 
-      for (var station in data) {
+      _allStations = List<Map<String, dynamic>>.from(data);
+
+      final List<Marker> loadedMarkers = [];
+      for (var station in _allStations) {
         loadedMarkers.add(
           Marker(
             point: LatLng(station['latitude'], station['longitude']),
@@ -88,71 +91,96 @@ void initState() {
             height: 80,
             child: GestureDetector(
               onTap: () {
-                // Show a dialog or snackbar with station info
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: Text(station['stationName']),
                     content: Text('Coordinates: ${station['latitude']}, ${station['longitude']}'),
-                    actions: [
-                      TextButton(
-                        child: const Text('Close'),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
+                    actions: [ TextButton(child: const Text('Close'), onPressed: () => Navigator.of(context).pop()) ],
                   ),
                 );
               },
-              child: const Icon(
-                Icons.ev_station,
-                color: Colors.purple,
-                size: 40,
-              ),
+              child: const Icon(Icons.ev_station, color: Colors.purpleAccent, size: 40),
             ),
           ),
         );
       }
-
       setState(() {
         _stationMarkers = loadedMarkers;
       });
-    } else {
-      // Handle server error
-      print('Failed to load stations. Status code: ${response.statusCode}');
     }
   } catch (e) {
-    // Handle network error
+    // DEBUG PRINT: Show any error during the fetch.
+    print('--- API FETCH ERROR ---');
     print('Error fetching stations: $e');
+    print('-----------------------');
   }
 }
 
-  void _startFollowingUser() {
-    if (_followUser) {
-      _positionStreamSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 1, // Update map on every 1 meter change for smoother follow
-        ),
-      ).listen((Position? position) {
-        if (position != null && _isMapReady && _followUser) {
-          _mapController.move(
-            LatLng(position.latitude, position.longitude),
-            _mapController.camera.zoom, // Keep current zoom when following
-          );
-        }
-      });
+  // NEW: A more robust search function
+void _searchStation(String query) {
+  // DEBUG PRINT: Show the original search term from the text field.
+  print('\n--- STARTING SEARCH ---');
+  print('Original search query: "$query"');
+
+  if (query.isEmpty) {
+    return;
+  }
+
+  String normalizeText(String text) {
+    return text
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  final normalizedQuery = normalizeText(query);
+  Map<String, dynamic>? foundStation;
+  
+  // DEBUG PRINT: Show the cleaned-up search term.
+  print('Normalized query: "$normalizedQuery"');
+  print('--- Comparing against all ${_allStations.length} stations ---');
+
+  for (var station in _allStations) {
+    final stationName = normalizeText(station['stationName'].toString());
+
+    // DEBUG PRINT: Show the comparison for EACH station in your list.
+    print('Comparing WITH normalized station name: "$stationName"');
+    
+    bool isMatch = stationName.contains(normalizedQuery);
+    // DEBUG PRINT: Show if the comparison resulted in a match.
+    print(' -> Match found: $isMatch');
+
+    if (isMatch) {
+      foundStation = station;
+      break;
     }
   }
 
-  void _stopFollowingUser() {
-    _positionStreamSubscription?.cancel();
-    _positionStreamSubscription = null;
+  print('--- SEARCH FINISHED ---');
+  // DEBUG PRINT: Announce the final result.
+  print('Final result: ${foundStation != null ? 'Station Found!' : 'No Station Found.'}');
+
+
+  if (foundStation != null) {
+    _mapController.move(
+      LatLng(foundStation['latitude'], foundStation['longitude']),
+      18.0,
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("No station found for '$query'"),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
+}
 
   @override
   void dispose() {
-    _positionStreamSubscription?.cancel();
-    _mapController.dispose(); // Dispose map controller
+    _alignPositionStreamController.close();
     super.dispose();
   }
 
@@ -162,136 +190,81 @@ void initState() {
       body: !_isMapReady
           ? const Center(child: CircularProgressIndicator())
           : Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _initialCenter!,
-              initialZoom: 17.0,
-              onPositionChanged: (MapCamera camera, bool hasGesture) {
-                if (hasGesture && _followUser) {
-                  // User interacted with the map, stop following
-                  setState(() {
-                    _followUser = false;
-                  });
-                  _stopFollowingUser();
-                }
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.osmion',
-              ),
-              MarkerLayer(markers: _stationMarkers),
-              CurrentLocationLayer(
-                style: LocationMarkerStyle(
-                  marker: DefaultLocationMarker(
-                    color: const Color.fromARGB(255, 2, 83, 30),
-                    child: const Icon(
-                      Icons.navigation,
-                      color: Color.fromARGB(255, 199, 245, 200),
-                    ),
+              children: [
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _initialCenter!,
+                    initialZoom: 17.0,
                   ),
-                  markerSize: const Size(40, 40),
-                  markerDirection: MarkerDirection.heading,
-                  accuracyCircleColor: const Color.fromARGB(255, 64, 124, 65).withOpacity(0.3),
-                  headingSectorColor: const Color.fromARGB(255, 199, 245, 200).withOpacity(0.5),
-                  headingSectorRadius: 60,
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            top: 40,
-            left: 15,
-            right: 15,
-            child: SafeArea(
-              child: Card(
-                elevation: 4.0,
-                color: const Color.fromARGB(255, 199, 245, 200),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.of(context).pop(),
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.osmion',
                     ),
-                    Expanded(
-                      child: TextField(
-                        cursorColor: const Color.fromARGB(136, 0, 0, 0),
-                        decoration: const InputDecoration(
-                          hintText: 'Search station...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onSubmitted: (value) {
-                          // TODO: Implement search logic
-                        },
-                      ),
+
+                    // FIXED: use alignPositionStream (Stream<double?>) and AlignOnUpdate
+                    CurrentLocationLayer(
+                      alignPositionStream: _alignPositionStreamController.stream,
+                      alignPositionOnUpdate: AlignOnUpdate.never,
+                      alignDirectionOnUpdate: AlignOnUpdate.never,
+                      style: const LocationMarkerStyle(), // default style
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.tune),
-                      onPressed: () {
-                        // TODO: Implement filter logic
-                      },
-                    ),
+
+                    MarkerLayer(markers: _stationMarkers),
                   ],
                 ),
-              ),
+
+                Positioned(
+                  top: 40,
+                  left: 15,
+                  right: 15,
+                  child: SafeArea(
+                    child: Card(
+                      elevation: 4.0,
+                      color: const Color.fromARGB(255, 199, 245, 200),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              cursorColor: const Color.fromARGB(136, 0, 0, 0),
+                              decoration: const InputDecoration(
+                                hintText: 'Search station...',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onSubmitted: (value) {
+                                _searchStation(value);
+                              },
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.tune),
+                            onPressed: () {},
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                Positioned(
+                  bottom: 30,
+                  right: 20,
+                  child: FloatingActionButton(
+                    backgroundColor: const Color.fromARGB(255, 199, 245, 200),
+                    child: const Icon(Icons.my_location, color: Color.fromARGB(255, 2, 83, 30)),
+                    // send a zoom level (double) or `null` to keep current zoom
+                    onPressed: () => _alignPositionStreamController.add(17.0),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Positioned(
-            bottom: 30,
-            right: 20,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 199, 245, 200),
-              onPressed: () async {
-                if (!_followUser) {
-                  // If not currently following, center and start following
-                  setState(() {
-                    _followUser = true;
-                  });
-                  _stopFollowingUser(); // Ensure any previous stream is cancelled
-                  try {
-                    Position position = await Geolocator.getCurrentPosition(
-                        desiredAccuracy: LocationAccuracy.high);
-                    _mapController.move(
-                      LatLng(position.latitude, position.longitude),
-                      17.0, // Zoom to desired level when FAB is pressed
-                    );
-                    _startFollowingUser(); // Start continuous following
-                  } catch (e) {
-                    print("Error getting current location for FAB: $e");
-                    setState(() {
-                      _followUser = false; // Revert state on error
-                    });
-                  }
-                } else {
-                  // If already following, pressing the button might just ensure centering
-                  // Or you could make it toggle _followUser off
-                  try {
-                    Position position = await Geolocator.getCurrentPosition(
-                        desiredAccuracy: LocationAccuracy.high);
-                    _mapController.move(
-                      LatLng(position.latitude, position.longitude),
-                      17.0,
-                    );
-                  } catch (e) {
-                    print("Error getting current location for FAB: $e");
-                  }
-                }
-              },
-              child: Icon(
-                _followUser ? Icons.my_location : Icons.location_searching,
-                color: const Color.fromARGB(255, 2, 83, 30),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

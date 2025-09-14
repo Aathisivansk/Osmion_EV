@@ -1,13 +1,14 @@
 // lib/host_api_service.dart
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http; // It must be a colon
 import 'hosting_session.dart';
 
 class HostApiService {
-  // IMPORTANT: Use the same IP address as in your other api_service file
-  static const String _baseUrl = 'http://127.0.0.1:5000/api';
+  // Use the IP address from your server's terminal output
+  static const String _baseUrl = 'http://10.71.184.148:5000/api';
 
+  // This method must be INSIDE the HostApiService class
   Future<void> createHostingSession(HostingSession session) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/hosts/create'),

@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:osmion/api_service.dart';
+import 'package:osmion/home/home.dart';
 import 'login_userreg.dart'; // Import the new registration page
 
 class LoginVerifyPage extends StatefulWidget {
   final String email;
-  const LoginVerifyPage({super.key, required this.email});
+  final bool isNewUser; // Add this line
+
+  const LoginVerifyPage({
+    super.key,
+    required this.email,
+    required this.isNewUser, // Add this line
+  });
 
   @override
   State<LoginVerifyPage> createState() => _LoginVerifyPageState();
@@ -15,6 +23,13 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
   final List<TextEditingController> _otpControllers =
   List.generate(4, (_) => TextEditingController());
   final List<FocusNode> _otpFocusNodes = List.generate(4, (_) => FocusNode());
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sendOtp(); // Send OTP when the page loads
+  }
 
   @override
   void dispose() {
@@ -33,6 +48,68 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
     }
     if (value.isEmpty && index > 0) {
       _otpFocusNodes[index - 1].requestFocus();
+    }
+  }
+
+  Future<void> _sendOtp() async {
+    final response = await ApiService.sendOtp(widget.email);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response['body']['message'])),
+      );
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final otp = _otpControllers.map((c) => c.text).join();
+    if (otp.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the full OTP.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final response = await ApiService.verifyOtp(widget.email, otp);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (mounted) {
+      if (response['statusCode'] == 200) {
+        // --- THIS IS THE UPDATED NAVIGATION LOGIC ---
+        if (widget.isNewUser) {
+          // If the user is new, go to the registration page
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('OTP Verified! Proceeding to registration...')),
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserRegisterPage(email: widget.email),
+            ),
+          );
+        } else {
+          // If the user already exists, log them in and go to the home page
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login Successful!')),
+          );
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+                (Route<dynamic> route) => false,
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${response['body']['message']}')),
+        );
+      }
     }
   }
 
@@ -64,7 +141,6 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
                     color: secondaryColor.withOpacity(0.5),
                     shape: BoxShape.circle,
                   ),
@@ -85,7 +161,7 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'OTP has been sent to your registered Email ID',
+                  'An OTP has been sent to ${widget.email}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 15,
@@ -101,8 +177,7 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () {
-                  },
+                  onPressed: _sendOtp,
                   child: const Text(
                     'Resend OTP',
                     style: TextStyle(
@@ -116,27 +191,7 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      final otp = _otpControllers.map((c) => c.text).join();
-                      if (otp.length == 4) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('OTP Verified! Proceeding to registration...')),
-                        );
-                        // Navigate to the user registration page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UserRegisterPage(email: widget.email),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Please enter the full OTP.')),
-                        );
-                      }
-                    },
+                    onPressed: _isLoading ? null : _verifyOtp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: secondaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -145,7 +200,12 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                      valueColor:
+                      AlwaysStoppedAnimation<Color>(primaryTextColor),
+                    )
+                        : const Text(
                       'Verify',
                       style: TextStyle(
                         fontSize: 18,
@@ -187,4 +247,3 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
     );
   }
 }
-

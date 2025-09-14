@@ -1,4 +1,6 @@
+// lib/login.dart
 import 'package:flutter/material.dart';
+import 'package:osmion/api_service.dart';
 import 'login_verify.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,8 +12,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  bool _isChecked = false;
   final _emailController = TextEditingController();
+  bool _isChecked = false;
+  bool _isLoading = false; // To show a loading indicator
 
   @override
   void dispose() {
@@ -19,70 +22,55 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _showTermsDialog() {
-    const Color primaryTextColor = Color(0xFF0A4F37);
-    const Color secondaryColor = Color(0xFFDDFCDA);
+  // This new function handles the logic for the "Continue" button
+  Future<void> _handleContinue() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (!_isChecked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please agree to the terms & conditions.')),
+      );
+      return;
+    }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          title: const Text(
-            'Terms & Conditions',
-            style: TextStyle(
-              color: primaryTextColor,
-              fontWeight: FontWeight.bold,
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Check if the email exists on the server
+    final response = await ApiService.checkEmailExists(_emailController.text);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (mounted) {
+      if (response['statusCode'] == 200) {
+        final bool isNewUser = !response['body']['exists'];
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginVerifyPage(
+              email: _emailController.text,
+              isNewUser: isNewUser, // Pass the user status to the next screen
             ),
           ),
-          content: const SingleChildScrollView(
-            child: Text(
-              'Please read these terms and conditions carefully before using Our Service.\n\n'
-                  'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. '
-                  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: <Widget>[
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: primaryTextColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Deny', style: TextStyle(color: primaryTextColor)),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            const SizedBox(width: 10),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: secondaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child:
-              const Text('Accept', style: TextStyle(color: primaryTextColor)),
-              onPressed: () {
-                setState(() {
-                  _isChecked = true;
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
         );
-      },
-    );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${response['body']['message']}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
+
+  // The rest of your LoginScreen code for the UI...
+  // (build method, WaveClipper, _showTermsDialog, etc.)
+  // Just make sure to update the onPressed callback for the "Continue" button:
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: _showTermsDialog,
                       child: Row(
                         children: <Widget>[
-                          // Replaced Checkbox with an Icon to match the design
                           Icon(
                             _isChecked
                                 ? Icons.check_circle
@@ -212,26 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            if (_isChecked) {
-                              // Pass the email to the next page
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LoginVerifyPage(
-                                      email: _emailController.text),
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Please agree to the terms & conditions.')),
-                              );
-                            }
-                          }
-                        },
+                        onPressed: _isLoading ? null : _handleContinue, // Updated
                         style: ButtonStyle(
                           backgroundColor:
                           WidgetStateProperty.all<Color>(secondaryColor),
@@ -247,7 +215,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           elevation: WidgetStateProperty.all<double>(0),
                         ),
-                        child: const Text(
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                          color: primaryTextColor,
+                        )
+                            : const Text(
                           'Continue',
                           style: TextStyle(
                             fontSize: 18,
@@ -264,6 +236,71 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showTermsDialog() {
+    const Color primaryTextColor = Color(0xFF0A4F37);
+    const Color secondaryColor = Color(0xFFDDFCDA);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          title: const Text(
+            'Terms & Conditions',
+            style: TextStyle(
+              color: primaryTextColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const SingleChildScrollView(
+            child: Text(
+              'Please read these terms and conditions carefully before using Our Service.\n\n'
+                  'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. '
+                  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+              style: TextStyle(color: Colors.black87),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: <Widget>[
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: primaryTextColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Deny', style: TextStyle(color: primaryTextColor)),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: secondaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child:
+              const Text('Accept', style: TextStyle(color: primaryTextColor)),
+              onPressed: () {
+                setState(() {
+                  _isChecked = true;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -292,4 +329,3 @@ class WaveClipper extends CustomClipper<Path> {
     return false;
   }
 }
-

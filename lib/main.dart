@@ -6,13 +6,14 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  // Updated to use a super parameter for the key.
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'OSMION',
+      title: 'Flutter Login UI',
       theme: ThemeData(
         primarySwatch: Colors.green,
         fontFamily: 'Inter',

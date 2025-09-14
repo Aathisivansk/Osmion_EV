@@ -72,7 +72,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _fetchChargingStations() async {
-    final url = Uri.parse('http://10.62.58.114:5000/api/stations');
+    final url = Uri.parse('http://127.0.0.1:5000/api/stations');
     try {
       final response = await http.get(url);
       print('Response status: ${response.statusCode}');
@@ -322,7 +322,6 @@ class StationDetailsSheet extends StatelessWidget {
     // ... (This widget remains unchanged)
     final distanceInKm = distanceInMeters != null ? (distanceInMeters! / 1000).toStringAsFixed(1) : null;
     final rating = station['rating']?.toString() ?? 'N/A';
-    final slotAvailable = station['slotAvailable'] ?? false;
     final sockets = List<String>.from(station['sockets'] ?? []);
     final amenities = List<String>.from(station['amenities'] ?? []);
 
@@ -352,15 +351,8 @@ class StationDetailsSheet extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: slotAvailable ? Colors.green.shade100 : Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(slotAvailable ? 'Slot Available' : 'Slot Full',
-                    style: TextStyle(color: slotAvailable ? Colors.green.shade800 : Colors.red.shade800)),
-                ),
-              ]),
+                  ]),
               if (distanceInKm != null) ...[
                 const SizedBox(height: 8),
                 Text('Distance: $distanceInKm km away', style: Theme.of(context).textTheme.bodyLarge),

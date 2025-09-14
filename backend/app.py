@@ -51,8 +51,6 @@ def add_station():
             "sockets": sockets,
             "amenities": amenities
         }
-
-        print(station_document)  # Debugging line to check the document structure
         
         stations_collection.insert_one(station_document)
         flash("Charging station added successfully!", "success")
@@ -74,7 +72,6 @@ def get_stations():
         for station in all_stations:
             station['_id'] = str(station['_id'])
             output.append(station)
-        print( output)  # Debugging line to check output
         return jsonify(output)
     
     except Exception as e:

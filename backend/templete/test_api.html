@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester - Osmion EV Backend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2E7D32;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #2E7D32;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1B5E20;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #e8f5e8;
+            border: 1px solid #c8e6c9;
+        }
+        .error {
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+        }
+        .tab {
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #2E7D32;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Osmion EV Backend Tester</h1>
+        <p>Test your Flask API endpoints easily</p>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('create')">Create User</div>
+            <div class="tab" onclick="showTab('get')">Get User</div>
+            <div class="tab" onclick="showTab('update')">Update User</div>
+        </div>
+
+        <!-- CREATE USER TAB -->
+        <div id="create" class="tab-content active">
+            <h2>Create New User</h2>
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" value="Test User">
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="small@gmail.com">
+            </div>
+            <div class="form-group">
+                <label for="mobile">Mobile Number:</label>
+                <input type="text" id="mobile" value="8123456789">
+            </div>
+            <div class="form-group">
+                <label for="pincode">PIN Code:</label>
+                <input type="text" id="pincode" value="600001">
+            </div>
+            <div class="form-group">
+                <label for="address">Address:</label>
+                <textarea id="address">Test Address, Chennai</textarea>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="test123">
+            </div>
+            <button onclick="createUser()">Create User</button>
+        </div>
+
+        <!-- GET USER TAB -->
+        <div id="get" class="tab-content">
+            <h2>Get User Profile</h2>
+            <div class="form-group">
+                <label for="getEmail">Email:</label>
+                <input type="email" id="getEmail" value="small@gmail.com">
+            </div>
+            <button onclick="getUser()">Get User</button>
+        </div>
+
+        <!-- UPDATE USER TAB -->
+        <div id="update" class="tab-content">
+            <h2>Update User Profile</h2>
+            <div class="form-group">
+                <label for="updateEmail">Email:</label>
+                <input type="email" id="updateEmail" value="small@gmail.com">
+            </div>
+            <div class="form-group">
+                <label for="updateName">Name:</label>
+                <input type="text" id="updateName" value="Updated Name">
+            </div>
+            <div class="form-group">
+                <label for="updateMobile">Mobile Number:</label>
+                <input type="text" id="updateMobile" value="9876543210">
+            </div>
+            <button onclick="updateUser()">Update User</button>
+        </div>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5001';
+        
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function createUser() {
+            const userData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                mobile: document.getElementById('mobile').value,
+                pincode: document.getElementById('pincode').value,
+                address: document.getElementById('address').value,
+                password: document.getElementById('password').value
+            };
+
+            fetch(`${API_BASE}/profile`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResult('✅ User created successfully!', data);
+            })
+            .catch(error => {
+                showResult('❌ Error creating user:', error, true);
+            });
+        }
+
+        function getUser() {
+            const email = document.getElementById('getEmail').value;
+            
+            fetch(`${API_BASE}/profile/${email}`)
+            .then(response => response.json())
+            .then(data => {
+                showResult('✅ User data retrieved:', data);
+            })
+            .catch(error => {
+                showResult('❌ Error fetching user:', error, true);
+            });
+        }
+
+        function updateUser() {
+            const email = document.getElementById('updateEmail').value;
+            const updateData = {
+                name: document.getElementById('updateName').value,
+                mobileNumber: document.getElementById('updateMobile').value
+            };
+
+            fetch(`${API_BASE}/profile/${email}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResult('✅ User updated successfully!', data);
+            })
+            .catch(error => {
+                showResult('❌ Error updating user:', error, true);
+            });
+        }
+
+        function showResult(message, data, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <strong>${message}</strong><br><br>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            resultDiv.className = isError ? 'result error' : 'result';
+        }
+    </script>
+</body>
+</html>

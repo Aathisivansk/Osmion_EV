@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Management System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #2c3e50, #1a2530);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            padding: 12px 25px;
+            margin: 0 10px 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .tab-btn.active {
+            background-color: #2c3e50;
+        }
+        
+        .content-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eaecef;
+        }
+        
+        .vehicle-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .vehicle-card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        
+        .vehicle-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .vehicle-name {
+            font-size: 1.4rem;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .vehicle-id {
+            color: #7f8c8d;
+            margin-bottom: 15px;
+            font-family: monospace;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-edit {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background-color: #e67e22;
+        }
+        
+        .btn-delete {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-save {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-cancel {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .btn-cancel:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .edit-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .backend-message {
+            background-color: #fff4e6;
+            border: 1px solid #ffd8b5;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-style: italic;
+            color: #e67700;
+        }
+        
+        .json-block {
+            background-color: #2c3e50;
+            color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .no-vehicles {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .vehicle-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .tab-btn {
+                width: 80%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vehicles API Tester</h1>
+            <p class="subtitle">Test your Vehicles API endpoints</p>
+        </header>
+        
+        <div class="nav-tabs">
+            <button class="tab-btn active">Get Vehicles</button>
+            <button class="tab-btn">Add Vehicle</button>
+            <button class="tab-btn">Manage Vehicles</button>
+        </div>
+        
+        <div class="content-section">
+            <h2>Manage Vehicles</h2>
+            <p>Select a vehicle to manage:</p>
+            
+            <div class="vehicle-list" id="vehicleList">
+                <!-- Vehicles will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">Vehicle details updated successfully!</div>
+
+    <script>
+        // Sample vehicle data
+        let vehicles = [
+            { id: 1, name: "Mathrdra BE 6", license: "TN5865000", type: "Sedan", year: 2022, color: "Midnight Blue" },
+            { id: 2, name: "Tata Nexon EV", license: "TN1234567", type: "SUV", year: 2023, color: "Polar White" },
+            { id: 3, name: "Hyundai Ioniq 5", license: "KA9876543", type: "Hatchback", year: 2023, color: "Cyber Gray" }
+        ];
+
+        // Load vehicles from localStorage if available
+        function loadVehicles() {
+            const storedVehicles = localStorage.getItem('vehicles');
+            if (storedVehicles) {
+                vehicles = JSON.parse(storedVehicles);
+            }
+            renderVehicles();
+        }
+
+        // Save vehicles to localStorage
+        function saveVehicles() {
+            localStorage.setItem('vehicles', JSON.stringify(vehicles));
+        }
+
+        // Render vehicles to the DOM
+        function renderVehicles() {
+            const vehicleList = document.getElementById('vehicleList');
+            vehicleList.innerHTML = '';
+            
+            if (vehicles.length === 0) {
+                vehicleList.innerHTML = '<div class="no-vehicles">No vehicles found. Add a vehicle to get started.</div>';
+                return;
+            }
+            
+            vehicles.forEach(vehicle => {
+                const vehicleCard = document.createElement('div');
+                vehicleCard.className = 'vehicle-card';
+                
+                // For vehicle with ID 1, show the backend message instead of edit form
+                if (vehicle.id === 1) {
+                    vehicleCard.innerHTML = `
+                        <h3 class="vehicle-name">${vehicle.name}</h3>
+                        <div class="vehicle-id">${vehicle.license}</div>
+                        <div><strong>Type:</strong> ${vehicle.type}</div>
+                        <div><strong>Year:</strong> ${vehicle.year}</div>
+                        <div><strong>Color:</strong> ${vehicle.color}</div>
+                        <div class="actions">
+                            <button class="btn btn-edit" onclick="showBackendMessage(${vehicle.id})">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-delete" onclick="deleteVehicle(${vehicle.id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        <div class="backend-message" id="backendMessage-${vehicle.id}" style="display: none;">
+                            Edit feature will be implemented when backend is ready
+                            <div class="json-block">{ "vehicleId": "${vehicle.id}" }</div>
+                        </div>
+                    `;
+                } else {
+                    vehicleCard.innerHTML = `
+                        <h3 class="vehicle-name">${vehicle.name}</h3>
+                        <div class="vehicle-id">${vehicle.license}</div>
+                        <div><strong>Type:</strong> ${vehicle.type}</div>
+                        <div><strong>Year:</strong> ${vehicle.year}</div>
+                        <div><strong>Color:</strong> ${vehicle.color}</div>
+                        <div class="actions">
+                            <button class="btn btn-edit" onclick="editVehicle(${vehicle.id})">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-delete" onclick="deleteVehicle(${vehicle.id})">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        <div class="edit-form" id="editForm-${vehicle.id}" style="display: none;">
+                            <div class="form-group">
+                                <label for="name-${vehicle.id}">Vehicle Name</label>
+                                <input type="text" id="name-${vehicle.id}" value="${vehicle.name}">
+                            </div>
+                            <div class="form-group">
+                                <label for="license-${vehicle.id}">License Plate</label>
+                                <input type="text" id="license-${vehicle.id}" value="${vehicle.license}">
+                            </div>
+                            <div class="form-group">
+                                <label for="type-${vehicle.id}">Vehicle Type</label>
+                                <select id="type-${vehicle.id}">
+                                    <option value="Sedan" ${vehicle.type === 'Sedan' ? 'selected' : ''}>Sedan</option>
+                                    <option value="SUV" ${vehicle.type === 'SUV' ? 'selected' : ''}>SUV</option>
+                                    <option value="Hatchback" ${vehicle.type === 'Hatchback' ? 'selected' : ''}>Hatchback</option>
+                                    <option value="Truck" ${vehicle.type === 'Truck' ? 'selected' : ''}>Truck</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="year-${vehicle.id}">Year</label>
+                                <input type="number" id="year-${vehicle.id}" value="${vehicle.year}" min="2000" max="2030">
+                            </div>
+                            <div class="form-group">
+                                <label for="color-${vehicle.id}">Color</label>
+                                <input type="text" id="color-${vehicle.id}" value="${vehicle.color}">
+                            </div>
+                            <div class="actions">
+                                <button class="btn btn-save" onclick="saveVehicle(${vehicle.id})">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                                <button class="btn btn-cancel" onclick="cancelEdit(${vehicle.id})">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                vehicleList.appendChild(vehicleCard);
+            });
+        }
+
+        // Show backend message for vehicle with ID 1
+        function showBackendMessage(vehicleId) {
+            const backendMessage = document.getElementById(`backendMessage-${vehicleId}`);
+            if (backendMessage) {
+                // Hide all other backend messages and edit forms first
+                document.querySelectorAll('.backend-message').forEach(msg => {
+                    msg.style.display = 'none';
+                });
+                document.querySelectorAll('.edit-form').forEach(form => {
+                    form.style.display = 'none';
+                });
+                
+                // Show the selected backend message
+                backendMessage.style.display = 'block';
+            }
+        }
+
+        // Edit vehicle function
+        function editVehicle(vehicleId) {
+            // Hide all edit forms and backend messages first
+            document.querySelectorAll('.edit-form').forEach(form => {
+                form.style.display = 'none';
+            });
+            document.querySelectorAll('.backend-message').forEach(msg => {
+                msg.style.display = 'none';
+            });
+            
+            // Show the selected edit form
+            const editForm = document.getElementById(`editForm-${vehicleId}`);
+            if (editForm) {
+                editForm.style.display = 'block';
+            }
+        }
+
+        // Cancel edit function
+        function cancelEdit(vehicleId) {
+            const editForm = document.getElementById(`editForm-${vehicleId}`);
+            if (editForm) {
+                editForm.style.display = 'none';
+            }
+        }
+
+        // Save vehicle function
+        function saveVehicle(vehicleId) {
+            const vehicleIndex = vehicles.findIndex(v => v.id === vehicleId);
+            if (vehicleIndex !== -1) {
+                vehicles[vehicleIndex] = {
+                    ...vehicles[vehicleIndex],
+                    name: document.getElementById(`name-${vehicleId}`).value,
+                    license: document.getElementById(`license-${vehicleId}`).value,
+                    type: document.getElementById(`type-${vehicleId}`).value,
+                    year: parseInt(document.getElementById(`year-${vehicleId}`).value),
+                    color: document.getElementById(`color-${vehicleId}`).value
+                };
+                
+                saveVehicles();
+                renderVehicles();
+                showNotification('Vehicle details updated successfully!');
+            }
+        }
+
+        // Delete vehicle function
+        function deleteVehicle(vehicleId) {
+            if (confirm('Are you sure you want to delete this vehicle?')) {
+                vehicles = vehicles.filter(v => v.id !== vehicleId);
+                saveVehicles();
+                renderVehicles();
+                showNotification('Vehicle deleted successfully!');
+            }
+        }
+
+        // Show notification function
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            loadVehicles();
+        });
+    </script>
+</body>
+</html>

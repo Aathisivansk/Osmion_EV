@@ -110,7 +110,7 @@ class _BecomeHostScreenState extends State<BecomeHostScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Become a Charging Host'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -246,7 +246,7 @@ class _BecomeHostScreenState extends State<BecomeHostScreen> {
                   onPressed:
                   _isLoading || _detailsSaved ? null : _saveHostingDetails,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: Color.fromARGB(255, 36, 204, 71),
                     disabledBackgroundColor: Colors.grey.shade400,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),

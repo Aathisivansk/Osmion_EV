@@ -1,4 +1,5 @@
 // lib/hosting_session.dart
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HostingSession {
   final bool isHosting;
@@ -18,7 +19,8 @@ class HostingSession {
   });
 
   // Method to convert our object to a JSON map
-  Map<String, dynamic> toJson() {
+  Future<Map<String, dynamic>> toJson() async {
+    final prefs = await SharedPreferences.getInstance();
     return {
       'isHosting': isHosting,
       'location': location,
@@ -26,7 +28,7 @@ class HostingSession {
       'availableUntil': availableUntil.toIso8601String(), // Convert DateTime to a standard string
       'pricePerHour': pricePerHour,
       'contactDetails': contactDetails,
-      'userId': 'user123', // In a real app, you'd get this from your auth system
+      'userId': prefs.getString('userName'), // In a real app, you'd get this from your auth system
     };
   }
 }

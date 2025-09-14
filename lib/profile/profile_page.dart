@@ -232,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildHeader(BuildContext context, String userName, String userEmail) {
     return Container(
       width: double.infinity,
-      color: Theme.of(context).primaryColor,
+      color: Colors.green,
       padding: const EdgeInsets.only(top: 50, bottom: 20),
       child: Column(
         children: [

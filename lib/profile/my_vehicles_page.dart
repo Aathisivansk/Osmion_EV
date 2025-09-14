@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Vehicle {
   final String id;
@@ -17,23 +18,15 @@ class Vehicle {
     required this.registrationNumber,
   });
 
+  // FIX: Updated this factory to correctly parse the JSON from your server.
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
-      id: json['_id'] ?? json['id'] ?? '',
-      model: json['model'] ?? '',
-      connectorType: json['connectorType'] ?? '',
-      chargerType: json['chargerType'] ?? '',
-      registrationNumber: json['registrationNumber'] ?? '',
+      id: json['_id'] ?? '',
+      model: json['model'] ?? 'Unknown Model',
+      connectorType: json['connectorType'] ?? 'N/A',
+      chargerType: json['chargerType'] ?? 'N/A', // Your backend doesn't send this yet, so we'll use a default.
+      registrationNumber: json['registrationNumber'] ?? 'N/A',
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'model': model,
-      'connectorType': connectorType,
-      'chargerType': chargerType,
-      'registrationNumber': registrationNumber,
-    };
   }
 }
 
@@ -47,58 +40,62 @@ class MyVehiclesPage extends StatefulWidget {
 class _MyVehiclesPageState extends State<MyVehiclesPage> {
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
-  final String baseUrl = "http://10.0.2.2:5001";
+  String? _errorMessage;
+
+  // FIX: Corrected the port from 5001 to 5000 to match your server.
+  final String baseUrl = "http://10.62.58.114:5000";
 
   @override
   void initState() {
     super.initState();
-    print('🔄 MyVehiclesPage initState called');
     _loadVehicles();
   }
 
   Future<void> _loadVehicles() async {
-    print('🌐 Loading vehicles from backend...');
+    final prefs = await SharedPreferences.getInstance();
+    final userEmail = prefs.getString('user_email');
 
-    // For now, use test data since backend isn't ready
-    await Future.delayed(const Duration(seconds: 1));
+    if (userEmail == null) {
+      setState(() {
+        _errorMessage = "Could not find user email. Please log in again.";
+        _isLoading = false;
+      });
+      return;
+    }
 
-    setState(() {
-      _vehicles = [
-        Vehicle(
-          id: '1',
-          model: 'Mahendra BE 6',
-          connectorType: 'CCS-2',
-          chargerType: 'AC Type-2',
-          registrationNumber: 'TN5865000',
-        ),
-      ];
-      _isLoading = false;
-    });
-    print('✅ Loaded ${_vehicles.length} vehicles');
+    try {
+      // FIX: Calling the new user-specific endpoint.
+      final response = await http.get(Uri.parse('$baseUrl/api/vehicles/$userEmail'));
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> vehiclesData = jsonResponse['data'];
+          setState(() {
+            _vehicles = vehiclesData.map((data) => Vehicle.fromJson(data)).toList();
+            _isLoading = false;
+          });
+        } else {
+          throw Exception(jsonResponse['message']);
+        }
+      } else {
+        throw Exception('Failed to load vehicles from server.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   void _navigateToAddVehicle() {
-    print('➕ Add vehicle button pressed - navigating to add vehicle page');
-    // This will navigate to the page your teammates are creating
-    // For now, show a message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Add vehicle page will be implemented by the team'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  Future<void> _deleteVehicle(String vehicleId) async {
-    print('🗑️ Delete vehicle: $vehicleId');
-    setState(() {
-      _vehicles.removeWhere((vehicle) => vehicle.id == vehicleId);
-    });
-    print('✅ Vehicle deleted');
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Vehicle deleted'),
         duration: Duration(seconds: 2),
       ),
     );
@@ -118,6 +115,8 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(child: Text('Error: $_errorMessage'))
           : _vehicles.isEmpty
           ? _buildEmptyState()
           : _buildVehiclesList(),
@@ -131,10 +130,7 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
         children: [
           const Icon(Icons.directions_car_outlined, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text(
-            'No vehicles added yet',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
+          const Text('No vehicles added yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
           const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _navigateToAddVehicle,
@@ -170,22 +166,12 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
               children: [
                 Text(
                   vehicle.model,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () => _deleteVehicle(vehicle.id),
-                  tooltip: 'Delete Vehicle',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             _buildVehicleDetail('Connector', vehicle.connectorType),
-            _buildVehicleDetail('Charger Type', vehicle.chargerType),
             _buildVehicleDetail('Registration Number', vehicle.registrationNumber),
           ],
         ),
@@ -198,14 +184,8 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          Text(
-            value,
-            style: TextStyle(color: Colors.grey[700]),
-          ),
+          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(value, style: TextStyle(color: Colors.grey[700])),
         ],
       ),
     );

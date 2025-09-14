@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'edit_detail_page.dart';
 import 'profile_page.dart'; // This import is crucial. It tells this file where to find UserData.
-import 'package:http/http.dart' as http; // ADD THIS IMPORT
-import 'dart:convert'; // ADD THIS IMPORT
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MyAccountScreen extends StatefulWidget {
   final UserData userData;
@@ -14,16 +15,14 @@ class MyAccountScreen extends StatefulWidget {
 }
 
 class _MyAccountScreenState extends State<MyAccountScreen> {
-  // This is a local copy of the user data that we can safely edit.
   late UserData _editableUserData;
+  bool _isSaving = false;
 
-  // ADD THIS VARIABLE FOR BACKEND
-  final String baseUrl = "http://10.10.62.58.114:5000/";
+  final String baseUrl = "http://10.62.58.114:5000";
 
   @override
   void initState() {
     super.initState();
-    // When the screen starts, we make a local, editable copy of the data.
     _editableUserData = UserData.fromJson({
       "name": widget.userData.name,
       "email": widget.userData.email,
@@ -31,15 +30,24 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
       "pinCode": widget.userData.pinCode,
       "address": widget.userData.address,
     });
-    print('📝 Editable user data created'); // DEBUG
   }
 
-  // ADD THIS METHOD TO UPDATE PROFILE ON SERVER
   Future<void> _updateProfileOnServer() async {
+    setState(() {
+      _isSaving = true;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final userEmail = prefs.getString('user_email');
 
     try {
+      // FIX 2: Added the "/api" prefix to the endpoint to match your server routes.
+      final Uri requestUri = Uri.parse('$baseUrl/api/profile/$userEmail');
+
+      // For debugging: print the exact URL you are calling
+      print('Attempting to PUT to: $requestUri');
+
       final response = await http.put(
-        Uri.parse('$baseUrl/profile/${widget.userData.email}'),
+        requestUri,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'name': _editableUserData.name,
@@ -49,36 +57,46 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         }),
       );
 
+      // For debugging: print the server's response
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true) {
-
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully!')),
+            const SnackBar(
+              content: Text('Profile updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
           );
         } else {
-
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to update: ${jsonResponse['message']}')),
           );
         }
       } else {
-
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Server error, please try again')),
+          SnackBar(content: Text('Server error: ${response.statusCode}')),
         );
       }
     } catch (e) {
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Network error, please check your connection')),
+        SnackBar(content: Text('Network error: ${e.toString()}')),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
-  // This function handles navigating to the edit page and updating the state
   Future<void> _navigateToEditPage(String field) async {
-
     String currentValue = '';
     switch (field) {
       case 'Name':
@@ -101,51 +119,51 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     );
 
     if (newValue != null && newValue.isNotEmpty && mounted) {
-      print('🔄 Received new value for $field: $newValue'); // DEBUG
       setState(() {
         switch (field) {
           case 'Name':
             _editableUserData.name = newValue;
-            print('✅ Updated name to: $newValue'); // DEBUG
             break;
           case 'Mobile Number':
             _editableUserData.mobileNumber = newValue;
-            print('✅ Updated mobile to: $newValue'); // DEBUG
             break;
           case 'PIN Code':
             _editableUserData.pinCode = newValue;
-            print('✅ Updated PIN to: $newValue'); // DEBUG
             break;
           case 'Address':
             _editableUserData.address = newValue;
-            print('✅ Updated address to: $newValue'); // DEBUG
             break;
         }
       });
-
-      // ADD THIS LINE TO SAVE CHANGES TO SERVER
-      print('💾 Saving changes to server...'); // DEBUG
       _updateProfileOnServer();
-    } else {
-      print('❌ No changes made or empty value received'); // DEBUG
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    print('🏗️ Building MyAccountScreen UI'); // DEBUG
-    // This widget intercepts the back button press to return the updated data.
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
         if (didPop) return;
-        print('🔙 Back button pressed, returning updated data'); // DEBUG
         Navigator.of(context).pop(_editableUserData);
       },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('My Account'),
           centerTitle: true,
+          actions: [
+            if (_isSaving)
+              const Padding(
+                padding: EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                  ),
+                ),
+              ),
+          ],
         ),
         body: ListView(
           padding: const EdgeInsets.all(16.0),
@@ -196,7 +214,6 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     );
   }
 
-  // This helper widget builds a single row of information.
   Widget _buildInfoRow({
     required String title,
     String? value,
@@ -204,9 +221,8 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     bool hideDivider = false,
   }) {
     final bool hasValue = value != null && value.isNotEmpty;
-    print('📋 Building info row: $title, hasValue: $hasValue'); // DEBUG
     return InkWell(
-      onTap: onTap,
+      onTap: _isSaving ? null : onTap, // Disable taps while saving
       child: Column(
         children: [
           Padding(

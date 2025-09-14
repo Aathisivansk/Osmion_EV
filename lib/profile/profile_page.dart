@@ -26,9 +26,9 @@ class UserData {
 
   factory UserData.fromJson(Map<String, dynamic> json) {
     return UserData(
-      name: json['name'],
-      email: json['email'],
-      mobileNumber: json['mobileNumber'],
+      name: json['name'] ?? 'Guest',
+      email: json['email'] ?? 'No email found',
+      mobileNumber: json['mobileNumber'] ?? 'No mobile found',
       pinCode: json['pinCode'],
       address: json['address'],
     );
@@ -43,11 +43,12 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // This is the "memory" where the user's data is stored.
   UserData? _userData;
   bool _isLoading = true;
+  String? _errorMessage;
 
-  // ADD THESE VARIABLES FOR BACKEND
+  // For Android Emulator, 10.0.2.2 points to your computer's localhost.
+  // Make sure your backend server is running on port 5000.
   final String baseUrl = "http://10.62.58.114:5000";
 
   @override
@@ -56,19 +57,23 @@ class _ProfilePageState extends State<ProfilePage> {
     _fetchAccountDetails();
   }
 
-  // This function fetches the initial data when the page loads.
   Future<void> _fetchAccountDetails() async {
     final prefs = await SharedPreferences.getInstance();
-    final userEmail = prefs.getString('userEmail');
-    print(userEmail);
+    // FIX: Use the correct key 'user_email' to get the user's email.
+    final userEmail = prefs.getString('user_email');
 
     if (userEmail == null) {
-      _loadFallbackData(); // Or handle missing email appropriately
+      setState(() {
+        _errorMessage = "You are not logged in.";
+        _isLoading = false;
+      });
       return;
     }
+
     try {
+      // FIX: The endpoint should match your backend route, which is likely under /api.
       final response = await http.get(
-        Uri.parse('$baseUrl/profile/$userEmail'),
+        Uri.parse('$baseUrl/api/profile/$userEmail'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -80,35 +85,37 @@ class _ProfilePageState extends State<ProfilePage> {
             _isLoading = false;
           });
         } else {
-          _loadFallbackData();
+          throw Exception(jsonResponse['message'] ?? 'Failed to load user data.');
         }
       } else {
-        _loadFallbackData();
+        throw Exception('Failed to connect to the server.');
       }
     } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+      // As a fallback, try to load any locally saved data.
       _loadFallbackData();
     }
   }
 
-  // ADD THIS FUNCTION FOR FALLBACK DATA
   void _loadFallbackData() {
     SharedPreferences.getInstance().then((prefs) {
-      final fallbackName = prefs.getString('userName') ?? "Name";
-      final fallbackEmail = prefs.getString('userEmail') ?? "small@gmail.com";
-      // Fallback to local data if server is unavailable
+      final fallbackName = prefs.getString('userName') ?? "Guest";
+      final fallbackEmail = prefs.getString('user_email') ?? "Not logged in";
       setState(() {
         _userData = UserData(
           name: fallbackName,
           email: fallbackEmail,
           mobileNumber: "8XXXXXXXX",
         );
-        _isLoading = false;
       });
     });
   }
 
-  // This function navigates to the MyAccountScreen and handles the updated data.
   Future<void> _navigateToMyAccount() async {
+    if (_userData == null) return;
     final updatedUserData = await Navigator.push<UserData>(
       context,
       MaterialPageRoute(
@@ -140,7 +147,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             TextButton(
               child: const Text('Logout'),
-              onPressed: () {
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear(); // Clear all saved data on logout
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
                       (route) => false,
@@ -158,6 +167,8 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(child: Text('Error: $_errorMessage'))
           : Column(
         children: [
           _buildHeader(context, _userData?.name ?? 'Guest', _userData?.email ?? '...'),
@@ -181,7 +192,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const MyVehiclesPage()));
                       },
                     ),
-
                   ],
                 ),
                 const SizedBox(height: 20),

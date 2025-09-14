@@ -67,9 +67,12 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
     if (response['statusCode'] == 201) { // 201 means "Created" successfully
       // Navigate to the next page on success
       if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CarDetailsPage()),
+        Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CarDetailsPage(email: _emailController.text),
+            ),
+                (Route<dynamic> route) => false,
         );
       }
     } else {

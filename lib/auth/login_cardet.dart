@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import '../home/home.dart';
-import 'home/home.dart';
-
+import 'package:osmion/home/home.dart';
+import 'package:osmion/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 class CarDetailsPage extends StatefulWidget {
-  const CarDetailsPage({super.key});
+  final dynamic email;
 
+  const CarDetailsPage({super.key, required this.email});
+  
   @override
   State<CarDetailsPage> createState() => _CarDetailsPageState();
 }
@@ -21,11 +23,58 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
   String? _selectedMake;
   String? _selectedModel;
   String? _selectedConnector;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _registerNoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveVehicleDetails() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final response = await ApiService.addVehicleDetails(
+      email: widget.email, // Use the email passed to this page
+      make: _selectedMake!,
+      model: _selectedModel!,
+      registerNo: _registerNoController.text,
+      connectorType: _selectedConnector!,
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (mounted) {
+      if (response['statusCode'] == 201) {
+        // Save the user's session after successful registration
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_email', widget.email);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vehicle Details Saved!')),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+              (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${response['body']['message']}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -122,20 +171,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Vehicle Details Saved!')),
-                      );
-                      Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const HomePage()),
-                          (route) => false,
-                        );
-                    }
-                  },
+                  onPressed: _isLoading ? null : _saveVehicleDetails,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: secondaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -144,14 +180,16 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Continue',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: primaryTextColor,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: primaryTextColor)
+                      : const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: primaryTextColor,
+                          ),
+                        ),
                 ),
               ),
             ],

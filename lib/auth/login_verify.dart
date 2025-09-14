@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:osmion/api_service.dart';
 import 'package:osmion/home/home.dart';
-import 'login_userreg.dart'; // Import the new registration page
+import 'package:osmion/auth/login_userreg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginVerifyPage extends StatefulWidget {
   final String email;
-  final bool isNewUser; // Add this line
+  final bool isNewUser; // Flag to check if the user is new
 
   const LoginVerifyPage({
     super.key,
     required this.email,
-    required this.isNewUser, // Add this line
+    required this.isNewUser,
   });
 
   @override
@@ -81,7 +82,7 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
 
     if (mounted) {
       if (response['statusCode'] == 200) {
-        // --- THIS IS THE UPDATED NAVIGATION LOGIC ---
+        // --- CORRECT NAVIGATION LOGIC ---
         if (widget.isNewUser) {
           // If the user is new, go to the registration page
           ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +96,10 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
             ),
           );
         } else {
-          // If the user already exists, log them in and go to the home page
+          // If the user already exists, save session and go to home
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_email', response['body']['user']['email']);
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login Successful!')),
           );

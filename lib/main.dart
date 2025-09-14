@@ -1,25 +1,34 @@
 import 'package:flutter/material.dart';
-import 'auth/login.dart'; // Make sure this file exists in the lib folder';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'auth/login.dart';
+import 'home/home.dart'; // Make sure you have this file from the previous step
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  // Ensure that Flutter bindings are initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Check if the user is already logged in
+  final prefs = await SharedPreferences.getInstance();
+  final bool isLoggedIn = prefs.getString('user_email') != null;
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  // Updated to use a super parameter for the key.
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Login UI',
+      title: 'Osmion EV',
       theme: ThemeData(
         primarySwatch: Colors.green,
         fontFamily: 'Inter',
       ),
-      // Corrected to use the actual class name: LoginScreen
-      home: const LoginScreen(),
+      // Set the initial screen based on login status
+      home: isLoggedIn ? const HomePage() : const LoginScreen(),
     );
   }
 }

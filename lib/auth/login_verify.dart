@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:osmion/api_service.dart';
 import 'package:osmion/home/home.dart';
 import 'package:osmion/auth/login_userreg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:osmion/api_service.dart';
 
 class LoginVerifyPage extends StatefulWidget {
   final String email;
@@ -98,15 +99,22 @@ class _LoginVerifyPageState extends State<LoginVerifyPage> {
         } else {
           // If the user already exists, save session and go to home
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_email', response['body']['user']['email']);
+          await prefs.setString(
+              'user_email', response['body']['user']['email']);
           await prefs.setString('userName', response['body']['user']['name']);
+
+          // --- NEW: Save the profile image URL ---
+          if (response['body']['user']['profileImageUrl'] != null) {
+            await prefs.setString('profileImageUrl', response['body']['user']['profileImageUrl']);
+          }
+
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Login Successful!')),
           );
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
+            MaterialPageRoute(builder: (context) => const MainScreen()),
                 (Route<dynamic> route) => false,
           );
         }

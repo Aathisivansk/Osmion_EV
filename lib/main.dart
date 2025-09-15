@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth/login.dart';
-import 'home/home.dart'; // Make sure you have this file from the previous step
+import 'home/home.dart'; // This now imports MainScreen
 
 Future<void> main() async {
   // Ensure that Flutter bindings are initialized
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Inter',
       ),
       // Set the initial screen based on login status
-      home: isLoggedIn ? const HomePage() : const LoginScreen(),
+      home: isLoggedIn ? const MainScreen() : const LoginScreen(),
     );
   }
 }

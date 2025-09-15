@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
 class ApiService {
-  // FIX 1: Corrected base URL for Android emulator and consistency.
   static const String _baseUrl = 'http://10.62.58.114:5000/api';
 
   Future<List<Post>> fetchPosts() async {
@@ -19,8 +18,10 @@ class ApiService {
 
   Future<Post> createPost(String title, String content) async {
     final prefs = await SharedPreferences.getInstance();
-    // FIX 2: Use the correct key 'userName' to get the user's name.
     final name = prefs.getString('userName') ?? 'Anonymous';
+    // --- NEW: Get the profile image URL ---
+    final avatarUrl = prefs.getString('profileImageUrl') ?? 'https://i.pravatar.cc/150?u=$name';
+
 
     final response = await http.post(
       Uri.parse('$_baseUrl/posts/create'),
@@ -29,7 +30,7 @@ class ApiService {
         'title': title,
         'content': content,
         'name': name,
-        'userAvatarUrl': 'https://i.pravatar.cc/150?u=$name',
+        'userAvatarUrl': avatarUrl, // Use the real or fallback URL
       }),
     );
 
@@ -41,7 +42,8 @@ class ApiService {
   }
 
   Future<List<Comment>> fetchComments(String postId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/post/$postId/comments'));
+    final response =
+    await http.get(Uri.parse('$_baseUrl/post/$postId/comments'));
     if (response.statusCode == 200) {
       List<dynamic> body = jsonDecode(response.body);
       return body.map((dynamic item) => Comment.fromJson(item)).toList();
@@ -52,8 +54,10 @@ class ApiService {
 
   Future<Comment> addComment(String postId, String text) async {
     final prefs = await SharedPreferences.getInstance();
-    // FIX 2: Use the correct key 'userName' to get the user's name.
     final name = prefs.getString('userName') ?? 'Anonymous';
+    // --- NEW: Get the profile image URL ---
+    final avatarUrl = prefs.getString('profileImageUrl') ?? 'https://i.pravatar.cc/150?u=$name';
+
 
     final response = await http.post(
       Uri.parse('$_baseUrl/post/$postId/comment'),
@@ -61,7 +65,7 @@ class ApiService {
       body: jsonEncode({
         'text': text,
         'name': name,
-        'userAvatarUrl': 'https://i.pravatar.cc/150?u=$name',
+        'userAvatarUrl': avatarUrl, // Use the real or fallback URL
       }),
     );
 
@@ -73,7 +77,6 @@ class ApiService {
   }
 
   Future<int> upvotePost(String postId) async {
-    // FIX 3: Corrected the endpoint to match the server route.
     final response = await http.post(Uri.parse('$_baseUrl/posts/$postId/upvote'));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

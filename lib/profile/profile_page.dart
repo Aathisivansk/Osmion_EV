@@ -7,6 +7,9 @@ import 'my_vehicles_page.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'manage_well_wishers_page.dart';
 
 // This UserData class is the blueprint for the user's information.
 class UserData {
@@ -15,6 +18,7 @@ class UserData {
   String mobileNumber;
   String? pinCode;
   String? address;
+  String? profileImageUrl;
 
   UserData({
     required this.name,
@@ -22,6 +26,7 @@ class UserData {
     required this.mobileNumber,
     this.pinCode,
     this.address,
+    this.profileImageUrl,
   });
 
   factory UserData.fromJson(Map<String, dynamic> json) {
@@ -31,6 +36,7 @@ class UserData {
       mobileNumber: json['mobileNumber'] ?? 'No mobile found',
       pinCode: json['pinCode'],
       address: json['address'],
+      profileImageUrl: json['profileImageUrl'],
     );
   }
 }
@@ -46,6 +52,8 @@ class _ProfilePageState extends State<ProfilePage> {
   UserData? _userData;
   bool _isLoading = true;
   String? _errorMessage;
+  File? _imageFile;
+  final ImagePicker _picker = ImagePicker();
 
   final String baseUrl = "http://10.62.58.114:5000";
 
@@ -57,7 +65,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _fetchAccountDetails() async {
     final prefs = await SharedPreferences.getInstance();
-    // FIX: Use the correct key 'user_email' to get the user's email.
     final userEmail = prefs.getString('user_email');
 
     if (userEmail == null) {
@@ -69,7 +76,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     try {
-      // FIX: The endpoint should match your backend route, which is likely under /api.
       final response = await http.get(
         Uri.parse('$baseUrl/api/profile/$userEmail'),
         headers: {'Content-Type': 'application/json'},
@@ -83,7 +89,8 @@ class _ProfilePageState extends State<ProfilePage> {
             _isLoading = false;
           });
         } else {
-          throw Exception(jsonResponse['message'] ?? 'Failed to load user data.');
+          throw Exception(
+              jsonResponse['message'] ?? 'Failed to load user data.');
         }
       } else {
         throw Exception('Failed to connect to the server.');
@@ -93,7 +100,6 @@ class _ProfilePageState extends State<ProfilePage> {
         _errorMessage = e.toString();
         _isLoading = false;
       });
-      // As a fallback, try to load any locally saved data.
       _loadFallbackData();
     }
   }
@@ -110,6 +116,63 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       });
     });
+  }
+
+  // --- THIS IS THE CORRECTED UPLOAD FUNCTION ---
+  Future<void> _pickAndUploadImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+    if (pickedFile == null) return;
+
+    setState(() {
+      _imageFile = File(pickedFile.path);
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('user_email');
+    if (email == null) return;
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/profile/image'),
+    );
+
+    request.fields['email'] = email;
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'profile_image',
+        pickedFile.path,
+      ),
+    );
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 && mounted) {
+        final data = json.decode(response.body);
+        final newImageUrl = data['imageUrl'];
+
+        // --- NEW: Save the new URL to SharedPreferences ---
+        await prefs.setString('profileImageUrl', newImageUrl);
+
+        setState(() {
+          _userData?.profileImageUrl = newImageUrl;
+          _imageFile = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile picture updated!')));
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Upload failed: ${response.body}')));
+        }
+      }
+    } catch(e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('An error occurred: $e')));
+      }
+    }
   }
 
   Future<void> _navigateToMyAccount() async {
@@ -147,7 +210,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: const Text('Logout'),
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.clear(); // Clear all saved data on logout
+                await prefs.clear();
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
                       (route) => false,
@@ -169,7 +232,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ? Center(child: Text('Error: $_errorMessage'))
           : Column(
         children: [
-          _buildHeader(context, _userData?.name ?? 'Guest', _userData?.email ?? '...'),
+          _buildHeader(context, _userData?.name ?? 'Guest',
+              _userData?.email ?? '...'),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(16.0),
@@ -187,7 +251,29 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: Icons.directions_car_outlined,
                       title: 'My Vehicles',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyVehiclesPage()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                const MyVehiclesPage()));
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildMenuCard(
+                  context,
+                  title: 'Safety',
+                  children: [
+                    _buildMenuListItem(
+                      icon: Icons.sos,
+                      title: 'SOS - Well Wishers',
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                const ManageWellWishersPage()));
                       },
                     ),
                   ],
@@ -201,14 +287,22 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: Icons.help_outline,
                       title: 'Help & Support',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpAndSupportPage()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                const HelpAndSupportPage()));
                       },
                     ),
                     _buildMenuListItem(
                       icon: Icons.description_outlined,
                       title: 'Terms & Conditions',
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsAndConditionsPage()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                const TermsAndConditionsPage()));
                       },
                     ),
                     _buildMenuListItem(
@@ -216,7 +310,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       title: 'Logout',
                       textColor: Colors.red.shade700,
                       hideDivider: true,
-                      onTap: () => _showLogoutConfirmationDialog(context),
+                      onTap: () =>
+                          _showLogoutConfirmationDialog(context),
                     ),
                   ],
                 ),
@@ -228,23 +323,59 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // --- HELPER WIDGETS ---
   Widget _buildHeader(BuildContext context, String userName, String userEmail) {
+    ImageProvider<Object> backgroundImage;
+    if (_imageFile != null) {
+      backgroundImage = FileImage(_imageFile!);
+    } else if (_userData?.profileImageUrl != null &&
+        _userData!.profileImageUrl!.isNotEmpty) {
+      backgroundImage = NetworkImage(_userData!.profileImageUrl!);
+    } else {
+      backgroundImage = const AssetImage('assets/default_profile.png');
+    }
+
     return Container(
       width: double.infinity,
       color: Colors.green,
       padding: const EdgeInsets.only(top: 50, bottom: 20),
       child: Column(
         children: [
-          const CircleAvatar(
-            radius: 45,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, size: 50, color: Color(0xFF2E7D32)),
+          GestureDetector(
+            onTap: _pickAndUploadImage,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 45,
+                  backgroundImage: backgroundImage,
+                  backgroundColor: Colors.white,
+                  onBackgroundImageError: (exception, stackTrace) {
+                    // This will catch errors if the network image fails to load
+                    setState(() {
+                      _userData?.profileImageUrl = null;
+                    });
+                  },
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                    const Icon(Icons.edit, size: 20, color: Colors.green),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             userName,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(
+                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 4),
           Text(
@@ -256,7 +387,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, {required String title, required List<Widget> children}) {
+  Widget _buildMenuCard(BuildContext context,
+      {required String title, required List<Widget> children}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       decoration: BoxDecoration(
@@ -288,7 +420,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildMenuListItem({required IconData icon, required String title, VoidCallback? onTap, Color? textColor, bool hideDivider = false}) {
+  Widget _buildMenuListItem(
+      {required IconData icon,
+        required String title,
+        VoidCallback? onTap,
+        Color? textColor,
+        bool hideDivider = false}) {
     return InkWell(
       onTap: onTap,
       child: Column(
@@ -302,11 +439,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(color: textColor ?? Colors.black87, fontSize: 16, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                        color: textColor ?? Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500),
                   ),
                 ),
                 if (onTap != null)
-                  Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+                  Icon(Icons.arrow_forward_ios,
+                      size: 16, color: Colors.grey.shade400),
               ],
             ),
           ),

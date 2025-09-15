@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:osmion/explore/map_screen.dart';
 import 'package:osmion/hosting//t_and_c_check.dart';
 import 'package:osmion/profile/profile_page.dart';
+import 'package:osmion/wallet/wallet.dart';
 
 import '../community/community_feed_screen.dart';
 
@@ -92,6 +93,10 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
+    void navigateToWalletScreen() {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletPage()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFE9FBEF),
       appBar: AppBar(
@@ -145,6 +150,7 @@ class _HomePageState extends State<HomePage> {
         onTap: (index) {
           if (index == 0) navigateToMapScreen();
           if (index == 2) navigateToCommunityTab();
+          if (index == 3) navigateToWalletScreen(); // Navigate to WalletPage
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.location_pin), label: "Location"),

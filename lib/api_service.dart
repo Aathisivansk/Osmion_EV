@@ -57,6 +57,7 @@ class ApiService {
     required String address,
     required String pincode,
     required String mobile,
+    required String fcmToken,
   }) async {
     final url = Uri.parse('$_baseUrl/api/register');
     try {
@@ -69,6 +70,7 @@ class ApiService {
           'address': address,
           'pincode': pincode,
           'mobile': mobile,
+          'fcmToken': fcmToken,
         }),
       );
       return {'statusCode': response.statusCode, 'body': jsonDecode(response.body)};

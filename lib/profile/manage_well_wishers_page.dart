@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 // Model for a Well Wisher (user)
 class WellWisher {
@@ -96,10 +97,24 @@ class _ManageWellWishersPageState extends State<ManageWellWishersPage> {
 
   Future<void> _triggerSOS() async {
     final userEmail = await _getUserEmail();
+    if (userEmail == null) return;
+
+    // --- NEW: Get current location ---
+    String locationString = "an unknown location";
+    try {
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+      locationString = "latitude ${position.latitude}, longitude ${position.longitude}";
+    } catch (e) {
+      print("Could not get location for SOS: $e");
+    }
+
     final response = await http.post(
       Uri.parse('$baseUrl/api/sos/trigger'),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({'user_email': userEmail}),
+      body: json.encode({
+        'user_email': userEmail,
+        'location': locationString, // Send location to the backend
+      }),
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

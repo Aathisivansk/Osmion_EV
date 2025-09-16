@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:osmion/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,46 +41,46 @@ class _UserRegisterPageState extends State<UserRegisterPage> {
 
   // --- THIS IS THE NEW REGISTRATION LOGIC ---
   Future<void> _registerUser() async {
-    // First, validate the form inputs
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Show a loading circle
     setState(() {
       _isLoading = true;
     });
 
-    // Call the API service to register the user
+    // --- NEW: Get the FCM token before registering ---
+    String? fcmToken = await FirebaseMessaging.instance.getToken();
+
     final response = await ApiService.registerUser(
       name: _nameController.text,
       email: _emailController.text,
       address: _addressController.text,
       pincode: _pincodeController.text,
-      mobile: _mobileController.text, // Added password field
+      mobile: _mobileController.text,
+      fcmToken: fcmToken ?? "", // Pass the token to the API service
     );
 
-    // Hide the loading circle
     setState(() {
       _isLoading = false;
     });
 
-    // Handle the server's response
-    if (response['statusCode'] == 201) { // 201 means "Created" successfully
-      // Navigate to the next page on success
+    if (response['statusCode'] == 201) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userName', _nameController.text);
+      // Also save the email, which is needed by other parts of the app
+      await prefs.setString('user_email', _emailController.text);
+
       if (mounted) {
         Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CarDetailsPage(email: _emailController.text),
-            ),
-                (Route<dynamic> route) => false,
+          context,
+          MaterialPageRoute(
+            builder: (context) => CarDetailsPage(email: _emailController.text),
+          ),
+              (Route<dynamic> route) => false,
         );
       }
     } else {
-      // Show an error message if something went wrong
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -123,7 +125,12 @@ class _MapScreenState extends State<MapScreen> {
     }
     showModalBottomSheet(
       context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => StationDetailsSheet(station: station, distanceInMeters: distanceInMeters),
+      // Pass the state's context for showing SnackBars
+      builder: (ctx) => StationDetailsSheet(
+        station: station,
+        distanceInMeters: distanceInMeters,
+        parentContext: context, // Pass the context
+      ),
     );
   }
 
@@ -217,17 +224,14 @@ class _MapScreenState extends State<MapScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
               Expanded(
                 child: TextField(
                   cursorColor: const Color.fromARGB(136, 0, 0, 0),
                   decoration: const InputDecoration(
-                    hintText: 'Search station...',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16), // Added horizontal padding
+                    hintText: 'Search station...',
+                    isCollapsed: true, // Centers the hint text vertically
                   ),
                   onSubmitted: (value) {
                     _searchStation(value);
@@ -307,12 +311,52 @@ class _LegendItem extends StatelessWidget {
 class StationDetailsSheet extends StatelessWidget {
   final Map<String, dynamic> station;
   final double? distanceInMeters;
+  final BuildContext parentContext; // Add this to receive the context
 
   const StationDetailsSheet({
     super.key,
     required this.station,
     this.distanceInMeters,
+    required this.parentContext, // Add this
   });
+
+  // --- NEW: Function to create a transaction ---
+  Future<void> _createTransaction() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userEmail = prefs.getString('user_email');
+    if (userEmail == null) return;
+
+    // Simulate a random payment amount
+    final amount = (Random().nextDouble() * 1000).clamp(100, 1000);
+
+    final response = await http.post(
+      Uri.parse("http://10.62.58.114:5000/api/transactions/create"),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'user_email': userEmail,
+        'station_name': station['stationName'],
+        'amount': amount,
+        'payment_method': 'Wallet',
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      ScaffoldMessenger.of(parentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Payment successful!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(parentContext).showSnackBar(
+        const SnackBar(
+          content: Text('Payment failed.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -362,12 +406,13 @@ class StationDetailsSheet extends StatelessWidget {
               Wrap(spacing: 8, children: amenities.map((amenity) => Chip(label: Text(amenity))).toList()),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue, foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Book Now'),
+              onPressed: _createTransaction, // Call the new function
+              style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text('Pay Now'),
               ),
             ],
           ),

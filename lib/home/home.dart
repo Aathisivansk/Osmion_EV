@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:osmion/explore/map_screen.dart';
 import 'package:osmion/profile/profile_page.dart';
 import 'package:osmion/community/community_feed_screen.dart';
 import 'package:osmion/transaction_history/transaction_history.dart';
 import 'package:osmion/rewards/rewards_page.dart';
 import 'package:osmion/wallet/add_money_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -74,6 +77,12 @@ class _HomePageState extends State<HomePage> {
   int _currentPage = 0;
   Timer? _timer;
 
+  // --- NEW: State variables for wallet balance ---
+  double? _walletBalance;
+  bool _isLoadingBalance = true;
+  final String baseUrl = "http://10.62.58.114:5000";
+
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +111,40 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _fetchWalletBalance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userEmail = prefs.getString('user_email');
+    if (userEmail == null) {
+      setState(() {
+        _isLoadingBalance = false;
+        _walletBalance = 0;
+      });
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/profile/$userEmail'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            // Ensure the balance is treated as a number
+            _walletBalance = (data['data']['walletBalance'] as num).toDouble();
+            _isLoadingBalance = false;
+          });
+        }
+      } else {
+        setState(() => _isLoadingBalance = false);
+      }
+    } catch (e) {
+      setState(() => _isLoadingBalance = false);
+      print("Failed to fetch balance: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,8 +155,12 @@ class _HomePageState extends State<HomePage> {
         title: Row(
           children: [
             GestureDetector(
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage())),
+              onTap: () async {
+                await Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => const ProfilePage()));
+                // Refresh balance when returning from profile page
+                _fetchWalletBalance();
+              },
               child:
               const Icon(Icons.account_circle, size: 32, color: Colors.black),
             ),
@@ -130,34 +177,32 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildDynamicBanner(),
-            const SizedBox(height: 20),
-            _buildWalletContainer(),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildFeatureCard(
-                      icon: Icons.card_giftcard,
-                      title: "Reward",
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const RewardsPage()))),
-                  const SizedBox(height: 15),
-                  _buildFeatureCard(
-                      icon: Icons.flight_takeoff, title: "Plan a trip", onTap: () {}),
-                  const SizedBox(height: 15),
-                  _buildFeatureCard(
-                      icon: Icons.event_available, title: "Book a slot", onTap: () {}),
-                ],
-              ),
-            ),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _fetchWalletBalance,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildDynamicBanner(),
+              const SizedBox(height: 20),
+              _buildWalletContainer(),
+              const SizedBox(height: 20),
+              _buildFeatureCard(
+                  icon: Icons.card_giftcard,
+                  title: "Reward",
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const RewardsPage()))),
+              const SizedBox(height: 15),
+              _buildFeatureCard(
+                  icon: Icons.flight_takeoff, title: "Plan a trip", onTap: () {}),
+              const SizedBox(height: 15),
+              _buildFeatureCard(
+                  icon: Icons.event_available, title: "Book a slot", onTap: () {}),
+            ],
+          ),
         ),
       ),
     );
@@ -234,17 +279,23 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Balance',
                 style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
-              SizedBox(height: 4),
-              Text(
-                '₹ 1,250.00',
-                style: TextStyle(
+              const SizedBox(height: 4),
+              _isLoadingBalance
+                  ? const SizedBox(
+                height: 28,
+                width: 28,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+              )
+                  : Text(
+                '₹ ${_walletBalance?.toStringAsFixed(2) ?? '0.00'}',
+                style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold),
@@ -252,8 +303,12 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           GestureDetector(
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const AddMoneyPage())),
+            onTap: () async {
+              await Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const AddMoneyPage()));
+              // Refresh balance when returning from add money page
+              _fetchWalletBalance();
+            },
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(

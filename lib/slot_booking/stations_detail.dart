@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'booking_confirmation_page.dart'; // To navigate to the booking flow
-import 'slot_booking_page.dart'; // To get the ChargingStation model
+import 'select_slot_page.dart'; // Import the new slot selection page
 
-// --- DATA MODELS to represent the detailed station information ---
-// These models help structure the data for this specific page.
+// --- DATA MODELS ---
+// These data models structure the information for this page.
+// In a real app, you might move these to a separate 'models' file.
 
 class Charger {
   final String name;
@@ -42,7 +42,6 @@ class StationDetails {
 }
 
 class StationDetailsPage extends StatelessWidget {
-  // This page receives the detailed station data to display
   final StationDetails station;
 
   const StationDetailsPage({super.key, required this.station});
@@ -109,28 +108,19 @@ class StationDetailsPage extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: openColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: openColor, borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
               const Icon(Icons.star, color: Colors.white, size: 16),
               const SizedBox(width: 4),
-              Text(
-                station.rating.toString(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+              Text(station.rating.toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
         const SizedBox(width: 12),
         Icon(Icons.circle, color: station.isOpen ? openColor : Colors.red, size: 12),
         const SizedBox(width: 6),
-        Text(
-          station.isOpen ? 'Open' : 'Closed',
-          style: TextStyle(color: station.isOpen ? openColor : Colors.red, fontWeight: FontWeight.bold),
-        ),
+        Text(station.isOpen ? 'Open' : 'Closed', style: TextStyle(color: station.isOpen ? openColor : Colors.red, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -143,7 +133,7 @@ class StationDetailsPage extends StatelessWidget {
         const SizedBox(width: 4),
         Text('${station.distanceInKm} Km'),
         const SizedBox(width: 16),
-         Icon(Icons.access_time_filled, color: primaryColor, size: 18),
+        Icon(Icons.access_time_filled, color: primaryColor, size: 18),
         const SizedBox(width: 4),
         Text(station.timing),
       ],
@@ -153,20 +143,16 @@ class StationDetailsPage extends StatelessWidget {
   // Helper widget for the list of available chargers
   Widget _buildChargerSection(BuildContext context, Color primaryColor) {
     final availableChargers = station.chargers.where((c) => c.isAvailable).length;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Available Connectors  $availableChargers/${station.chargers.length}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            Text('Available Connectors  $availableChargers/${station.chargers.length}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             OutlinedButton.icon(
               onPressed: () {
-                // TODO: Add navigation logic
+                // TODO: Add navigation logic using a package like 'url_launcher'
               },
               icon: const Icon(Icons.near_me),
               label: const Text('Navigate'),
@@ -186,7 +172,7 @@ class StationDetailsPage extends StatelessWidget {
             crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 0.75, // Adjust aspect ratio for better fit
+            childAspectRatio: 0.75,
           ),
           itemCount: station.chargers.length,
           itemBuilder: (context, index) {
@@ -239,20 +225,11 @@ class StationDetailsPage extends StatelessWidget {
             const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) {
-                return Icon(
-                  i < charger.rating ? Icons.star : Icons.star_border,
-                  color: Colors.amber,
-                  size: 20,
-                );
-              }),
+              children: List.generate(5, (i) => Icon(i < charger.rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 20)),
             ),
             const SizedBox(height: 12),
             Center(
-              child: Text(
-                charger.tariff,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
-              ),
+              child: Text(charger.tariff, style: const TextStyle(color: Colors.grey, fontSize: 14)),
             ),
             const SizedBox(height: 8),
             SizedBox(
@@ -260,17 +237,10 @@ class StationDetailsPage extends StatelessWidget {
               child: ElevatedButton(
                 // Only enable the button if the charger is available
                 onPressed: charger.isAvailable ? () {
-                  // Navigate to the booking confirmation page
+                  // --- UPDATED: This now navigates to the slot selection page ---
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => BookingConfirmationPage(
-                        // We need to create a full StationDetails object to pass
-                        // This uses placeholder data that would come from the station object
-                        station: station,
-                        charger: charger,
-                      ),
-                    ),
+                    MaterialPageRoute(builder: (context) => const SelectSlotPage()),
                   );
                 } : null,
                 style: ElevatedButton.styleFrom(

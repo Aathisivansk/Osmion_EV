@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:osmion/slot_booking/stations_detail.dart'; // To access the Charger and StationDetails models
+import 'stations_detail.dart'; // To access the Charger and StationDetails models
+import 'select_slot_page.dart';   // Import the new slot selection page
 
 class BookingConfirmationPage extends StatefulWidget {
   final StationDetails station;
@@ -23,7 +24,6 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   final TextEditingController _unitsController = TextEditingController();
 
   // A sample price per unit (kWh) for calculation.
-  // In a real app, this would come from the database for each charger.
   final double _pricePerKwh = 18.00;
   final double _userWalletBalance = 500.00; // Sample wallet balance
 
@@ -32,14 +32,12 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   @override
   void initState() {
     super.initState();
-    // Add listeners to each controller to perform calculations.
     _amountController.addListener(_calculateUnits);
     _unitsController.addListener(_calculateAmount);
   }
 
-  // Calculates the number of units based on the amount entered
   void _calculateUnits() {
-    if (_isUpdating) return; // Prevent infinite loop
+    if (_isUpdating) return;
     _isUpdating = true;
     final amount = double.tryParse(_amountController.text);
     if (amount != null && _pricePerKwh > 0) {
@@ -51,9 +49,8 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
     _isUpdating = false;
   }
 
-  // Calculates the amount based on the number of units entered
   void _calculateAmount() {
-    if (_isUpdating) return; // Prevent infinite loop
+    if (_isUpdating) return;
     _isUpdating = true;
     final units = double.tryParse(_unitsController.text);
     if (units != null) {
@@ -73,11 +70,19 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
     _unitsController.dispose();
     super.dispose();
   }
+  
+  // --- UPDATED: This function now navigates to the slot selection page ---
+  void _handleBooking() {
+     Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SelectSlotPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF0A4F37);
-    const Color headerColor = Color(0xFF0A4F37); // Using app's primary color for the header
+    const Color headerColor = Color(0xFF0A4F37);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -105,6 +110,8 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
       bottomNavigationBar: _buildBottomBar(primaryColor),
     );
   }
+
+  // --- UI Helper Widgets ---
 
   Widget _buildHeader(Color headerColor) {
     return Container(
@@ -151,13 +158,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [ BoxShadow( color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4),) ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -165,15 +166,9 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Tata EZ Power Charge',
-                style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold),
-              ),
+              Text('Tata EZ Power Charge', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(
-                '₹ ${_userWalletBalance.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              Text('₹ ${_userWalletBalance.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ],
           ),
           const Icon(Icons.arrow_drop_down, color: Colors.grey),
@@ -186,17 +181,11 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
     return Container(
       margin: const EdgeInsets.all(16.0),
       padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration( color: Colors.white, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'I want to charge on the basis of',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          const Text('I want to charge on the basis of', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           _buildToggleButtons(primaryColor),
           const SizedBox(height: 20),
@@ -211,16 +200,12 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
 
   Widget _buildToggleButtons(Color primaryColor) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration( color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
       child: ToggleButtons(
         isSelected: [_isAmountSelected, !_isAmountSelected],
         onPressed: (index) {
           setState(() {
             _isAmountSelected = index == 0;
-            // Clear fields when toggling
             _amountController.clear();
             _unitsController.clear();
           });
@@ -232,22 +217,8 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
         renderBorder: false,
         constraints: BoxConstraints(minWidth: (MediaQuery.of(context).size.width - 80) / 2, minHeight: 40),
         children: const [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.currency_rupee, size: 16),
-              SizedBox(width: 4),
-              Text('Amount'),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.flash_on, size: 16),
-              SizedBox(width: 4),
-              Text('Units'),
-            ],
-          ),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [ Icon(Icons.currency_rupee, size: 16), SizedBox(width: 4), Text('Amount'),]),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [ Icon(Icons.flash_on, size: 16), SizedBox(width: 4), Text('Units'),]),
         ],
       ),
     );
@@ -261,10 +232,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
         TextFormField(
           controller: _amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            prefixText: '₹ ',
-            hintText: '0.00'
-          ),
+          decoration: const InputDecoration(prefixText: '₹ ', hintText: '0.00'),
         ),
         const SizedBox(height: 16),
         Row(
@@ -288,10 +256,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
         TextFormField(
           controller: _unitsController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            suffixText: 'kWh',
-            hintText: '0.00'
-          ),
+          decoration: const InputDecoration(suffixText: 'kWh', hintText: '0.00'),
         ),
       ],
     );
@@ -313,18 +278,11 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
       padding: const EdgeInsets.all(16.0),
       decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
+        boxShadow: [ BoxShadow( color: Colors.black12, blurRadius: 10, offset: Offset(0, -2),) ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Listen to the amount controller to update the text in real-time
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _amountController,
             builder: (context, value, child) {
@@ -333,25 +291,18 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Amount to Pay'),
-                  Text(
-                    '₹ ${value.text.isEmpty ? '0.00' : value.text}',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  Text('₹ ${value.text.isEmpty ? '0.00' : value.text}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ],
               );
             }
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Proceed to policy page or payment
-            },
+            onPressed: _handleBooking,
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
+              shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(30)),
             ),
             child: const Text('Book'),
           ),

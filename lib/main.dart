@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:osmion/slot_booking/stations.dart';
+import 'package:osmion/slot_booking/stations_detail.dart';
 // Import your station details page
 
 void main() {

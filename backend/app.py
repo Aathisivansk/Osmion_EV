@@ -2,74 +2,69 @@ from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from flask_cors import CORS
 from bson import json_util
-from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
 
 # --- MongoDB Connection ---
-# Make sure this is your correct connection string from MongoDB
-MONGO_URI = "YOUR_MONGODB_CONNECTION_STRING" 
+# Make sure this is your correct connection string
+MONGO_URI = "YOUR_mongodb://localhost:27017/" 
 client = MongoClient(MONGO_URI)
 db = client.get_database('Osmion')
-users_collection = db.User_Auth
-# UPDATED: This now correctly points to your 'Slot_booking' collection
-stations_collection = db.Slot_booking 
+# Connect to your new vehicles collection and your stations collection
+vehicles_stations_collection = db.vehicles_stations
+
 
 # --- API Endpoints ---
 
-# Your user authentication endpoints remain the same
-@app.route('/api/check_email', methods=['POST'])
-def check_email():
+# NEW: Endpoint to get vehicle makes and models
+@app.route('/api/vehicles', methods=['GET'])
+def get_vehicles():
     try:
-        data = request.get_json()
-        email = data.get('email')
-        if users_collection.find_one({'email': email}):
-            return jsonify({'exists': True}), 200
+        make = request.args.get('make')
+        if make:
+            # If a make is specified, return only models for that make
+            models = vehicles_collection.find({'make': make}, {'_id': 0, 'model': 1})
+            return json_util.dumps([model['model'] for model in models])
         else:
-            return jsonify({'exists': False}), 200
+            # If no make is specified, return a unique list of all makes
+            makes = vehicles_collection.distinct('make')
+            return json_util.dumps(makes)
     except Exception as e:
         return jsonify({'message': f'Server error: {e}'}), 500
 
-@app.route('/api/register', methods=['POST'])
-def register_user():
+# NEW: Endpoint to get the connector type for a specific model
+@app.route('/api/vehicle_connector', methods=['GET'])
+def get_vehicle_connector():
     try:
-        user_data = request.get_json()
-        password = user_data.get('password')
-        hashed_password = generate_password_hash(password)
-        user_data['password'] = hashed_password
-        users_collection.insert_one(user_data)
-        return jsonify({'message': 'User registered successfully!'}), 201
-    except Exception as e:
-        return jsonify({'message': f'Server error: {e}'}), 500
-
-@app.route('/api/login', methods=['POST'])
-def login_user():
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        user = users_collection.find_one({'email': email})
-        if user and check_password_hash(user['password'], password):
-            user_data = { 'name': user.get('name'), 'email': user.get('email') }
-            return jsonify({'message': 'Login successful', 'user': user_data}), 200
+        model = request.args.get('model')
+        if not model:
+            return jsonify({'message': 'Model parameter is required'}), 400
+        
+        vehicle = vehicles_collection.find_one({'model': model})
+        if vehicle:
+            return jsonify({'connectorType': vehicle.get('connectorType')})
         else:
-            return jsonify({'message': 'Invalid email or password'}), 401
+            return jsonify({'message': 'Vehicle model not found'}), 404
     except Exception as e:
         return jsonify({'message': f'Server error: {e}'}), 500
 
-# This is the endpoint that provides the station data to your Flutter app
+# UPDATED: Endpoint to get stations, now with filtering
 @app.route('/api/stations', methods=['GET'])
 def get_stations():
     try:
-        all_stations = list(stations_collection.find({}))
-        # json_util correctly converts MongoDB's data types for Flutter
+        connector_type = request.args.get('connector')
+        query = {}
+        if connector_type:
+            # Find stations where the 'sockets' array contains the specified connector type
+            query['sockets'] = connector_type
+        
+        all_stations = list(stations_collection.find(query))
         return json_util.dumps(all_stations)
         
     except Exception as e:
-        print(f"An error occurred while fetching stations: {e}")
+        print(f"An error occurred fetching stations: {e}")
         return jsonify({'message': 'An internal server error occurred'}), 500
-
 
 # --- Run the App ---
 if __name__ == '__main__':

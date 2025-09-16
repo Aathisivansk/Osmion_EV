@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:osmion/slot_booking/stations_detail.dart';
-// Import your station details page
+import 'package:osmion/slot_booking/slot_booking_page.dart';
+// Import the slot booking page
 
 void main() {
   runApp(const MyApp());
@@ -11,33 +11,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // --- UPDATED SAMPLE DATA ---
-    // Now includes an 'isAvailable' flag for each charger.
-    final sampleStation = StationDetails(
-      name: 'IOCL Shanthi Social Services Charging Station',
-      address: '128, 2247, Trichy Rd, Krishnapuram Medu, Singanallur',
-      rating: 4.7,
-      isOpen: true,
-      distanceInKm: 3.4,
-      timing: '12:00 AM - 11:59 PM',
-      chargers: [
-        Charger(
-          name: 'Charger A',
-          type: 'CCS-2',
-          tariff: '₹180.00/15 mins',
-          rating: 5,
-          isAvailable: false, // This charger is now occupied
-        ),
-        Charger(
-          name: 'Charger B',
-          type: 'CCS-2',
-          tariff: '₹180.00/15 mins',
-          rating: 3,
-          isAvailable: true, // This charger is available
-        ),
-      ],
-    );
-
     // Define the primary color swatch for your app's theme
     const MaterialColor primaryThemeColor = MaterialColor(
       0xFF0A4F37,
@@ -57,14 +30,26 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Osmion EV Station Details',
+      title: 'Osmion EV Charging',
       theme: ThemeData(
         primarySwatch: primaryThemeColor,
-        fontFamily: 'Inter',
+        fontFamily: 'Inter', // Assuming you have this font configured
         scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 1,
+          iconTheme: IconThemeData(color: Color(0xFF0A4F37)),
+          titleTextStyle: TextStyle(
+            color: Color(0xFF0A4F37),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      // Set the StationDetailsPage as the home screen, passing the sample data
-      home: StationDetailsPage(station: sampleStation),
+      // Set the SlotBookingPage as the home screen.
+      // We pass a sample vehicle connector type to filter the stations.
+      // In a real app, you would get this data after the user logs in.
+      home: const SlotBookingPage(userVehicleConnector: 'CCS2'),
     );
   }
 }

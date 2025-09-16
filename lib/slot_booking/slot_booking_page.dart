@@ -28,8 +28,10 @@ class ChargingStation {
   });
 
   factory ChargingStation.fromJson(Map<String, dynamic> json) {
+    // Handling MongoDB's ObjectId format which is often nested
+    final idValue = json['_id'] is Map ? json['_id']['\$oid'] : json['_id'];
     return ChargingStation(
-      id: json['_id'] ?? '',
+      id: idValue ?? '',
       name: json['stationName'] ?? 'Unknown Station',
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
@@ -122,7 +124,7 @@ class _SlotBookingPageState extends State<SlotBookingPage> {
     final connector = widget.userVehicleConnector;
 
     // Build the URL with a query parameter to filter by connector
-    // IMPORTANT: Replace with your server's actual IP address
+    // --- IMPORTANT: Replace with your computer's actual IP address ---
     final url = Uri.parse('http://192.168.1.5:5000/api/stations?connector=$connector');
     
     try {
@@ -131,6 +133,8 @@ class _SlotBookingPageState extends State<SlotBookingPage> {
         final List<dynamic> data = json.decode(response.body);
         _allStations = data.map((json) => ChargingStation.fromJson(json)).toList();
         _buildMarkers();
+      } else {
+         debugPrint("Server error: ${response.body}");
       }
     } catch (e) {
       debugPrint('Error fetching compatible stations: $e');
@@ -239,8 +243,8 @@ class _SlotBookingPageState extends State<SlotBookingPage> {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: _primaryColor),
-                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.menu, color: _primaryColor),
+                onPressed: () { /* TODO: Open a navigation drawer */ },
               ),
               Expanded(
                 child: TextField(
@@ -320,7 +324,7 @@ class StationDetailsSheet extends StatelessWidget {
                 ],
               ]),
               const Divider(height: 32),
-              const Text('Compatible Sockets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Available Sockets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: station.sockets.map((socket) => Chip(label: Text(socket))).toList()),
               const Divider(height: 32),
@@ -329,7 +333,9 @@ class StationDetailsSheet extends StatelessWidget {
               Wrap(spacing: 8, runSpacing: 8, children: station.amenities.map((amenity) => Chip(label: Text(amenity))).toList()),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // TODO: Navigate to the full station details page
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0A4F37), foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),

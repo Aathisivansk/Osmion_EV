@@ -8,6 +8,7 @@ import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:osmion/slot_booking/stations_detail.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -87,19 +88,23 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Color _getColorForChargerType(String chargerType) {
-    switch (chargerType.toLowerCase()) {
-      case 'ac': return _acColor;
-      case 'dc': return _dcColor;
-      case 'both': return _bothColor;
-      default: return Colors.grey;
+  Color _getColorForChargerType(List<dynamic> chargers) {
+    Set<String> types = chargers.map((c) => (c['chargerType'] as String).toLowerCase()).toSet();
+    if (types.contains('ac') && types.contains('dc')) {
+      return _bothColor;
+    } else if (types.contains('dc')) {
+      return _dcColor;
+    } else if (types.contains('ac')) {
+      return _acColor;
     }
+    return Colors.grey;
   }
+
 
   void _buildMarkers() {
     final List<Marker> loadedMarkers = [];
     for (var station in _allStations) {
-      final color = _getColorForChargerType(station['chargerType'] ?? 'unknown');
+      final color = _getColorForChargerType(station['chargers'] ?? []);
       loadedMarkers.add(
         Marker(
           point: LatLng(station['latitude'], station['longitude']),
@@ -123,16 +128,32 @@ class _MapScreenState extends State<MapScreen> {
         station['latitude'], station['longitude'],
       );
     }
-    showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      // Pass the state's context for showing SnackBars
-      builder: (ctx) => StationDetailsSheet(
-        station: station,
-        distanceInMeters: distanceInMeters,
-        parentContext: context, // Pass the context
+
+    // --- UPDATED: Navigate to the full details page ---
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StationDetailsPage(
+          station: StationDetails(
+            name: station['stationName'] ?? 'Unknown',
+            address: station['address'] ?? 'No address',
+            rating: (station['stationRating'] as num?)?.toDouble() ?? 0.0,
+            isOpen: true, // Assuming it's open
+            distanceInKm: distanceInMeters != null ? (distanceInMeters / 1000) : 0.0,
+            timing: station['timing'] ?? 'N/A',
+            chargers: (station['chargers'] as List<dynamic>).map((c) => Charger(
+              name: c['chargerName'],
+              type: c['chargerType'],
+              tariff: c['tariff'],
+              rating: (c['chargerRating'] as num?)?.toDouble() ?? 0.0,
+              isAvailable: c['isAvailable'],
+            )).toList(),
+          ),
+        ),
       ),
     );
   }
+
 
   void _searchStation(String query) {
     // ... search logic ...
@@ -303,121 +324,6 @@ class _LegendItem extends StatelessWidget {
           Text(text),
         ],
       ),
-    );
-  }
-}
-
-// The separate widget for the bottom sheet UI
-class StationDetailsSheet extends StatelessWidget {
-  final Map<String, dynamic> station;
-  final double? distanceInMeters;
-  final BuildContext parentContext; // Add this to receive the context
-
-  const StationDetailsSheet({
-    super.key,
-    required this.station,
-    this.distanceInMeters,
-    required this.parentContext, // Add this
-  });
-
-  // --- NEW: Function to create a transaction ---
-  Future<void> _createTransaction() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userEmail = prefs.getString('user_email');
-    if (userEmail == null) return;
-
-    // Simulate a random payment amount
-    final amount = (Random().nextDouble() * 1000).clamp(100, 1000);
-
-    final response = await http.post(
-      Uri.parse("http://10.62.58.114:5000/api/transactions/create"),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'user_email': userEmail,
-        'station_name': station['stationName'],
-        'amount': amount,
-        'payment_method': 'Wallet',
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      ScaffoldMessenger.of(parentContext).showSnackBar(
-        const SnackBar(
-          content: Text('Payment successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(parentContext).showSnackBar(
-        const SnackBar(
-          content: Text('Payment failed.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-
-  @override
-  Widget build(BuildContext context) {
-    // ... (This widget remains unchanged)
-    final distanceInKm = distanceInMeters != null ? (distanceInMeters! / 1000).toStringAsFixed(1) : null;
-    final rating = station['rating']?.toString() ?? 'N/A';
-    final sockets = List<String>.from(station['sockets'] ?? []);
-    final amenities = List<String>.from(station['amenities'] ?? []);
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6, minChildSize: 0.3, maxChildSize: 0.9,
-      builder: (_, controller) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView(
-            controller: controller,
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text(station['stationName'], style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(12)),
-                  child: Row(children: [
-                    const Icon(Icons.star, color: Colors.white, size: 16),
-                    const SizedBox(width: 4),
-                    Text(rating, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ]),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                ),
-              ]),
-              if (distanceInKm != null) ...[
-                const SizedBox(height: 8),
-                Text('Distance: $distanceInKm km away', style: Theme.of(context).textTheme.bodyLarge),
-              ],
-              const Divider(height: 24),
-              const Text('Sockets', style: TextStyle(fontWeight: FontWeight.bold)),
-              Wrap(spacing: 8, children: sockets.map((socket) => Chip(label: Text(socket))).toList()),
-              const Divider(height: 24),
-              const Text('Amenities', style: TextStyle(fontWeight: FontWeight.bold)),
-              Wrap(spacing: 8, children: amenities.map((amenity) => Chip(label: Text(amenity))).toList()),
-              const SizedBox(height: 24),
-              ElevatedButton(
-              onPressed: _createTransaction, // Call the new function
-              style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text('Pay Now'),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

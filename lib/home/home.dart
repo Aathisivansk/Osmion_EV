@@ -9,6 +9,8 @@ import 'package:osmion/transaction_history/transaction_history.dart';
 import 'package:osmion/rewards/rewards_page.dart';
 import 'package:osmion/wallet/add_money_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:osmion/slot_booking/slot_booking_page.dart';
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -145,6 +147,33 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // --- NEW: Function to get the user's vehicle connector type ---
+  Future<String?> _getUserVehicleConnector() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userEmail = prefs.getString('user_email');
+    if (userEmail == null) {
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/vehicles/$userEmail'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] && data['data'].isNotEmpty) {
+          // Assuming the user has only one vehicle for now
+          return data['data'][0]['connectorType'];
+        }
+      }
+    } catch (e) {
+      print("Failed to fetch vehicle details: $e");
+    }
+    return null;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -200,7 +229,24 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.flight_takeoff, title: "Plan a trip", onTap: () {}),
               const SizedBox(height: 15),
               _buildFeatureCard(
-                  icon: Icons.event_available, title: "Book a slot", onTap: () {}),
+                  icon: Icons.event_available, title: "Book a slot",
+                  onTap: () async {
+                    final connectorType = await _getUserVehicleConnector();
+                    if (connectorType != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SlotBookingPage(userVehicleConnector: connectorType),
+                        ),
+                      );
+                    } else {
+                      // Handle the case where the connector type could not be fetched
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Could not find your vehicle information.')),
+                      );
+                    }
+                  }
+              ),
             ],
           ),
         ),

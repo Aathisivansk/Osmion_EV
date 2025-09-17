@@ -177,35 +177,44 @@ class StationDetailsPage extends StatelessWidget {
           itemCount: station.chargers.length,
           itemBuilder: (context, index) {
             final charger = station.chargers[index];
-            return _buildChargerCard(context, charger, primaryColor);
+            return _buildChargerCard(context, station, charger, primaryColor);
           },
         ),
       ],
     );
   }
 
-  // Helper widget for a single charger card
-  Widget _buildChargerCard(BuildContext context, Charger charger, Color primaryColor) {
+  // --- UPDATED WIDGET TO FIX OVERFLOW ---
+  Widget _buildChargerCard(BuildContext context, StationDetails station, Charger charger, Color primaryColor) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: charger.isAvailable ? Colors.green : Colors.grey.shade300)
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: charger.isAvailable ? Colors.green : Colors.grey.shade300),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(8.0), // Reduced padding
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distributes space evenly
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(charger.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Flexible(
+                  child: Text(
+                    charger.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                      color: charger.isAvailable ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8)
+                    color: charger.isAvailable ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     charger.isAvailable ? 'Available' : 'Occupied',
@@ -218,37 +227,47 @@ class StationDetailsPage extends StatelessWidget {
                 ),
               ],
             ),
-            const Spacer(),
-            Center(child: Icon(Icons.electrical_services, size: 40, color: primaryColor.withOpacity(0.8))),
-            const SizedBox(height: 8),
-            Center(child: Text(charger.type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) => Icon(i < charger.rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 20)),
+            Column(
+              children: [
+                Icon(Icons.electrical_services, size: 35, color: primaryColor.withOpacity(0.8)),
+                const SizedBox(height: 4),
+                Text(charger.type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ],
             ),
-            const SizedBox(height: 12),
-            Center(
-              child: Text(charger.tariff, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (i) => Icon(i < charger.rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 18)),
+                ),
+                const SizedBox(height: 8),
+                Text(charger.tariff, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
             ),
-            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                // Only enable the button if the charger is available
-                onPressed: charger.isAvailable ? () {
-                  // --- UPDATED: This now navigates to the slot selection page ---
+                onPressed: charger.isAvailable
+                    ? () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SelectSlotPage()),
+                    MaterialPageRoute(
+                      builder: (context) => SelectSlotPage(
+                        station: station,
+                        charger: charger,
+                      ),
+                    ),
                   );
-                } : null,
+                }
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey.shade300,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Book Now'),
+                child: const Text('Book Now', style: TextStyle(fontSize: 14)),
               ),
             )
           ],
@@ -257,4 +276,3 @@ class StationDetailsPage extends StatelessWidget {
     );
   }
 }
-

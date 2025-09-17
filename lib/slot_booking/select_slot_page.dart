@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'invoice.dart'; // Import the invoice page
+import 'package:osmion/slot_booking/invoice.dart';
+import 'package:osmion/slot_booking/stations_detail.dart';
+
 
 // A data model to represent a time slot
 class TimeSlot {
@@ -12,8 +14,14 @@ class TimeSlot {
 }
 
 class SelectSlotPage extends StatefulWidget {
-  // In a real app, you would pass the specific charger ID and station info
-  const SelectSlotPage({super.key});
+  final StationDetails station;
+  final Charger charger;
+
+  const SelectSlotPage({
+    super.key,
+    required this.station,
+    required this.charger,
+  });
 
   @override
   State<SelectSlotPage> createState() => _SelectSlotPageState();
@@ -144,12 +152,12 @@ class _SelectSlotPageState extends State<SelectSlotPage> {
     final totalAmount = sessionCharges;
 
     final bookingDetails = BookingDetails(
-        stationName: 'Zone by The Park, Avinashi Rd',
-        stationAddress: 'No. 33/3, Avinashi Rd, Coimbatore',
-        chargerName: 'Charger A',
-        chargerType: 'CCS-2',
+        stationName: widget.station.name,
+        stationAddress: widget.station.address,
+        chargerName: widget.charger.name,
+        chargerType: widget.charger.type,
         capacity: 30,
-        tariff: '₹157.50/15 mins (Estimated*)',
+        tariff: widget.charger.tariff,
         startTime: startDateTime,
         endTime: endDateTime,
         sessionCharges: sessionCharges,
@@ -180,7 +188,7 @@ class _SelectSlotPageState extends State<SelectSlotPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Book a Session', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+        title: Text('Book a Session at ${widget.station.name}', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFFDDFCDA),
         iconTheme: const IconThemeData(color: primaryColor),
         elevation: 1,
@@ -446,4 +454,3 @@ class _SelectSlotPageState extends State<SelectSlotPage> {
     );
   }
 }
-

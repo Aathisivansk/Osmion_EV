@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:osmion/slot_booking/stations_detail.dart';
 
 // Data model for a charging station for better type safety
 class ChargingStation {
@@ -13,7 +14,7 @@ class ChargingStation {
   final String name;
   final double latitude;
   final double longitude;
-  final List<String> sockets;
+  final List<dynamic> chargers;
   final List<String> amenities;
   final double rating;
 
@@ -22,7 +23,7 @@ class ChargingStation {
     required this.name,
     required this.latitude,
     required this.longitude,
-    required this.sockets,
+    required this.chargers,
     required this.amenities,
     required this.rating,
   });
@@ -35,9 +36,9 @@ class ChargingStation {
       name: json['stationName'] ?? 'Unknown Station',
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      sockets: List<String>.from(json['sockets'] ?? []),
+      chargers: json['chargers'] ?? [],
       amenities: List<String>.from(json['amenities'] ?? []),
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      rating: (json['stationRating'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -125,7 +126,7 @@ class _SlotBookingPageState extends State<SlotBookingPage> {
 
     // Build the URL with a query parameter to filter by connector
     // --- IMPORTANT: Replace with your computer's actual IP address ---
-    final url = Uri.parse('http://192.168.1.5:5000/api/stations?connector=$connector');
+    final url = Uri.parse('http://10.62.58.114:5000/api/stations?connector=$connector');
 
     try {
       final response = await http.get(url);
@@ -324,9 +325,14 @@ class StationDetailsSheet extends StatelessWidget {
                 ],
               ]),
               const Divider(height: 32),
-              const Text('Available Sockets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Available Chargers', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: station.sockets.map((socket) => Chip(label: Text(socket))).toList()),
+              ...station.chargers.map((charger) =>
+                  ListTile(title: Text(charger['chargerName']),
+                    subtitle: Text(charger['chargerType']),
+                    trailing: Text(charger['isAvailable'] ? 'Available' : 'Occupied'),
+                  )
+              ).toList(),
               const Divider(height: 32),
               const Text('Amenities', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
@@ -334,14 +340,32 @@ class StationDetailsSheet extends StatelessWidget {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
-                  // TODO: Navigate to the full station details page
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => StationDetailsPage(
+                              station: StationDetails(
+                                  name: station.name,
+                                  address: 'address',
+                                  rating: station.rating,
+                                  isOpen: true,
+                                  distanceInKm: 2.5,
+                                  timing: '24 Hours',
+                                  chargers: [
+                                    Charger(name: 'Charger A', type: 'CCS-2', tariff: '21/kwh', rating: 4.5, isAvailable: true),
+                                    Charger(name: 'Charger B', type: 'Type 2 AC', tariff: '18/kwh', rating: 4, isAvailable: false)
+                                  ]
+                              )
+                          )
+                      )
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0A4F37), foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
                 ),
-                child: const Text('Book Slot', style: TextStyle(fontSize: 18)),
+                child: const Text('View Details', style: TextStyle(fontSize: 18)),
               ),
             ],
           ),
@@ -350,4 +374,3 @@ class StationDetailsSheet extends StatelessWidget {
     );
   }
 }
-

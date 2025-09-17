@@ -8,9 +8,13 @@ import 'select_slot_page.dart'; // Import the new slot selection page
 class Charger {
   final String name;
   final String type;
-  final String tariff;
+  final String tariff; // The original string, e.g., "₹21/kWh"
   final double rating;
   final bool isAvailable;
+
+  // --- NEW: Smartly calculated fields ---
+  final String tariffType; // Will be 'per_kwh' or 'per_minute'
+  final double tariffRate; // Will be the numeric rate, e.g., 21.0
 
   Charger({
     required this.name,
@@ -18,7 +22,33 @@ class Charger {
     required this.tariff,
     required this.rating,
     required this.isAvailable,
-  });
+  })  : tariffType = _parseTariffType(tariff),
+        tariffRate = _parseTariffRate(tariff);
+
+  // --- NEW: Helper function to parse the tariff string ---
+  static String _parseTariffType(String tariff) {
+    if (tariff.toLowerCase().contains('kwh')) {
+      return 'per_kwh';
+    } else if (tariff.toLowerCase().contains('min')) {
+      return 'per_minute';
+    }
+    return 'unknown'; // Fallback
+  }
+
+  // --- NEW: Helper function to extract the numeric rate ---
+  static double _parseTariffRate(String tariff) {
+    try {
+      // Finds numbers in the string (handles decimals as well)
+      final RegExp regex = RegExp(r'(\d+(\.\d+)?)');
+      final match = regex.firstMatch(tariff);
+      if (match != null) {
+        return double.parse(match.group(0)!);
+      }
+    } catch (e) {
+      print("Error parsing tariff rate: $e");
+    }
+    return 0.0; // Fallback
+  }
 }
 
 class StationDetails {

@@ -138,13 +138,13 @@ class _MapScreenState extends State<MapScreen> {
             name: station['stationName'] ?? 'Unknown',
             address: station['address'] ?? 'No address',
             rating: (station['stationRating'] as num?)?.toDouble() ?? 0.0,
-            isOpen: true, // Assuming it's open
+            isOpen: station['isOpen'] ?? true,
             distanceInKm: distanceInMeters != null ? (distanceInMeters / 1000) : 0.0,
             timing: station['timing'] ?? 'N/A',
             chargers: (station['chargers'] as List<dynamic>).map((c) => Charger(
               name: c['chargerName'],
               type: c['chargerType'],
-              tariff: c['tariff'],
+              tariff: c['tariff'], // The original string is passed here
               rating: (c['chargerRating'] as num?)?.toDouble() ?? 0.0,
               isAvailable: c['isAvailable'],
             )).toList(),

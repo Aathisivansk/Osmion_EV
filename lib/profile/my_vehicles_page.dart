@@ -7,25 +7,24 @@ class Vehicle {
   final String id;
   final String model;
   final String connectorType;
-  final String chargerType;
   final String registrationNumber;
+  final double? capacity; // Now includes capacity
 
   Vehicle({
     required this.id,
     required this.model,
     required this.connectorType,
-    required this.chargerType,
     required this.registrationNumber,
+    this.capacity,
   });
 
-  // FIX: Updated this factory to correctly parse the JSON from your server.
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
       id: json['_id'] ?? '',
       model: json['model'] ?? 'Unknown Model',
       connectorType: json['connectorType'] ?? 'N/A',
-      chargerType: json['chargerType'] ?? 'N/A', // Your backend doesn't send this yet, so we'll use a default.
       registrationNumber: json['registrationNumber'] ?? 'N/A',
+      capacity: (json['capacity'] as num?)?.toDouble(), // Parse capacity
     );
   }
 }
@@ -42,7 +41,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  // FIX: Corrected the port from 5001 to 5000 to match your server.
   final String baseUrl = "http://10.62.58.114:5000";
 
   @override
@@ -64,7 +62,6 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
     }
 
     try {
-      // FIX: Calling the new user-specific endpoint.
       final response = await http.get(Uri.parse('$baseUrl/api/vehicles/$userEmail'));
 
       if (!mounted) return;
@@ -173,6 +170,8 @@ class _MyVehiclesPageState extends State<MyVehiclesPage> {
             const SizedBox(height: 12),
             _buildVehicleDetail('Connector', vehicle.connectorType),
             _buildVehicleDetail('Registration Number', vehicle.registrationNumber),
+            if (vehicle.capacity != null) // Display capacity if it exists
+              _buildVehicleDetail('Battery Capacity', '${vehicle.capacity} kWh'),
           ],
         ),
       ),

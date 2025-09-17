@@ -1,12 +1,14 @@
+// lib/auth/login_cardet.dart
 import 'package:flutter/material.dart';
 import 'package:osmion/home/home.dart';
 import 'package:osmion/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 class CarDetailsPage extends StatefulWidget {
-  final dynamic email;
+  final String email;
 
   const CarDetailsPage({super.key, required this.email});
-  
+
   @override
   State<CarDetailsPage> createState() => _CarDetailsPageState();
 }
@@ -14,8 +16,9 @@ class CarDetailsPage extends StatefulWidget {
 class _CarDetailsPageState extends State<CarDetailsPage> {
   final _formKey = GlobalKey<FormState>();
   final _registerNoController = TextEditingController();
+  final _capacityController = TextEditingController(); // NEW: Controller for capacity
 
-  // Placeholder data for dropdowns - you will replace this from your database
+  // ... (dropdown lists remain the same) ...
   final List<String> _makes = ['Tata', 'Mahindra', 'Hyundai', 'MG', 'BYD'];
   final List<String> _models = ['Nexon EV', 'Tiago EV', 'XUV400', 'Kona Electric', 'ZS EV'];
   final List<String> _connectorTypes = ['CCS 2', 'CHAdeMO', 'Type 2 AC', 'GB/T'];
@@ -28,6 +31,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
   @override
   void dispose() {
     _registerNoController.dispose();
+    _capacityController.dispose(); // NEW: Dispose the controller
     super.dispose();
   }
 
@@ -41,11 +45,12 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
     });
 
     final response = await ApiService.addVehicleDetails(
-      email: widget.email, // Use the email passed to this page
+      email: widget.email,
       make: _selectedMake!,
       model: _selectedModel!,
       registerNo: _registerNoController.text,
       connectorType: _selectedConnector!,
+      capacity: double.parse(_capacityController.text), // NEW: Pass capacity
     );
 
     setState(() {
@@ -54,7 +59,6 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
 
     if (mounted) {
       if (response['statusCode'] == 201) {
-        // Save the user's session after successful registration
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_email', widget.email);
 
@@ -63,7 +67,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
         );
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
+          MaterialPageRoute(builder: (context) => const MainScreen()), // Navigate to MainScreen
               (route) => false,
         );
       } else {
@@ -79,6 +83,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (build method remains the same until the last dropdown)
     const Color primaryTextColor = Color(0xFF0A4F37);
     const Color secondaryColor = Color(0xFFDDFCDA);
     const Color labelColor = Colors.grey;
@@ -154,6 +159,23 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                 },
               ),
               const SizedBox(height: 20),
+              // --- NEW TEXT FIELD FOR CAPACITY ---
+              _buildTextField(
+                controller: _capacityController,
+                label: 'Vehicle Battery Capacity (kWh)*',
+                labelColor: labelColor,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter battery capacity';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
               _buildDropdown(
                 value: _selectedConnector,
                 items: _connectorTypes,
@@ -183,13 +205,13 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: primaryTextColor)
                       : const Text(
-                          'Continue',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: primaryTextColor,
-                          ),
-                        ),
+                    'Continue',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: primaryTextColor,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -198,16 +220,18 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
       ),
     );
   }
-
+// ... (Your _buildTextField and _buildDropdown methods remain the same)
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required Color labelColor,
+    TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
+      keyboardType: keyboardType,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       decoration: InputDecoration(
         labelText: label,
@@ -231,7 +255,7 @@ class _CarDetailsPageState extends State<CarDetailsPage> {
     String? Function(String?)? validator,
   }) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      value: value,
       items: items.map((String value) {
         return DropdownMenuItem<String>(
           value: value,

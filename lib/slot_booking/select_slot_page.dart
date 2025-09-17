@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:osmion/slot_booking/invoice.dart';
 import 'package:osmion/slot_booking/stations_detail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-
-// A data model to represent a time slot
 class TimeSlot {
-  final String time; // e.g., "22:15"
-  final String status; // "available", "occupied"
+  final String time;
+  final String status;
   bool isSelected;
-
   TimeSlot({required this.time, required this.status, this.isSelected = false});
 }
 
@@ -31,15 +31,38 @@ class _SelectSlotPageState extends State<SelectSlotPage> {
   DateTime _selectedDate = DateTime.now();
   List<TimeSlot> _timeSlots = [];
   bool _isLoading = true;
+  double _vehicleCapacity = 30.0; // Default capacity
 
-  // State for the user's selection
   TimeSlot? _startSlot;
   TimeSlot? _endSlot;
 
   @override
   void initState() {
     super.initState();
+    _fetchVehicleCapacity();
     _fetchSlotsForDate(_selectedDate);
+  }
+
+  Future<void> _fetchVehicleCapacity() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userEmail = prefs.getString('user_email');
+    if (userEmail == null) return;
+
+    try {
+      final response = await http.get(Uri.parse('http://10.62.58.114:5000/api/vehicles/$userEmail'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] && data['data'].isNotEmpty && data['data'][0]['capacity'] != null) {
+          if (mounted) {
+            setState(() {
+              _vehicleCapacity = (data['data'][0]['capacity'] as num).toDouble();
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print("Could not fetch vehicle capacity: $e");
+    }
   }
 
   // This function simulates fetching slot data from your server.
@@ -138,31 +161,23 @@ class _SelectSlotPageState extends State<SelectSlotPage> {
     final startDateTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, int.parse(startTimeParts[0]), int.parse(startTimeParts[1]));
 
     int duration = 15;
-    DateTime endDateTime;
-
     if (_endSlot != null) {
       final start = int.parse(_startSlot!.time.split(':')[0]) * 60 + int.parse(_startSlot!.time.split(':')[1]);
       final end = int.parse(_endSlot!.time.split(':')[0]) * 60 + int.parse(_endSlot!.time.split(':')[1]);
       duration = end - start + 15;
     }
-    endDateTime = startDateTime.add(Duration(minutes: duration));
+    final endDateTime = startDateTime.add(Duration(minutes: duration));
 
-    final bookingFee = (duration*15);
-    final sessionCharges = bookingFee * 5.25; // Example calculation (315 / 60)
-    final totalAmount = sessionCharges;
+    final bookingFee = (duration / 15) * 60.0;
 
     final bookingDetails = BookingDetails(
         stationName: widget.station.name,
         stationAddress: widget.station.address,
-        chargerName: widget.charger.name,
-        chargerType: widget.charger.type,
-        capacity: 30,
-        tariff: widget.charger.tariff,
+        charger: widget.charger,
+        capacity: _vehicleCapacity, // Use the fetched capacity
         startTime: startDateTime,
         endTime: endDateTime,
-        sessionCharges: sessionCharges,
-        bookingFee: bookingFee.toDouble(),
-        totalAmount: totalAmount
+        bookingFee: bookingFee
     );
 
     Navigator.push(

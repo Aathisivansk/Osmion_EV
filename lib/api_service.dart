@@ -100,6 +100,7 @@ class ApiService {
     required String model,
     required String registerNo,
     required String connectorType,
+    required double capacity,
   }) async {
     final url = Uri.parse('$_baseUrl/api/add_vehicle');
     try {
@@ -112,6 +113,7 @@ class ApiService {
           'model': model,
           'register_no': registerNo,
           'connector_type': connectorType,
+          'capacity': capacity,
         }),
       );
       return {'statusCode': response.statusCode, 'body': jsonDecode(response.body)};

@@ -11,17 +11,33 @@ import datetime
 import random
 import string
 import os # Import the os module
+from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
+# Firebase Admin SDK imports
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+load_dotenv()  # Load environment variables from a .env file if present
+
+# Initialize Firebase Admin SDK (ensure you have the service account key JSON file)
+if not firebase_admin._apps:
+    cred = credentials.Certificate(os.getenv('FIREBASE_CREDENTIALS_PATH', 'serviceAccountKey.json'))
+    firebase_admin.initialize_app(cred)
 
 app = Flask(__name__)
 CORS(app)
+
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # --- Flask-Mail Configuration ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = 'aathisivan1104@gmail.com'
-# FIX: Use environment variables for sensitive data like passwords.
-# In your terminal, you would set this like: export MAIL_PASSWORD='your_password'
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_PASSWORD'] = "mwmlktxvykdbseoz"
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
@@ -43,7 +59,9 @@ try:
     vehicle_collection = auth_db.Vehicles
     posts_collection = community_db.posts
     comments_collection = community_db.comments
-    host_collection = community_db['host']
+    well_wishers_collection = auth_db.well_wishers
+    transactions_collection = auth_db.transactions
+
 
     client.server_info() # Test connection
     print("✅ Successfully connected to MongoDB!")
@@ -81,6 +99,26 @@ def parse_json(data):
 
 
 # --- API Endpoints ---
+
+# --- NEW: Endpoint to store a user's FCM token ---
+@app.route('/api/user/fcm_token', methods=['POST'])
+def update_fcm_token():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        fcm_token = data.get('fcm_token')
+
+        if not email or not fcm_token:
+            return jsonify({'success': False, 'message': 'Email and FCM token are required'}), 400
+
+        users_collection.update_one(
+            {'email': email},
+            {'$set': {'fcmToken': fcm_token}},
+            upsert=True
+        )
+        return jsonify({'success': True, 'message': 'FCM token updated successfully'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
 
 # --- User Authentication and Management (No changes needed here) ---
 
@@ -146,10 +184,13 @@ def verify_otp():
 def register_user():
     try:
         user_data = request.get_json()
-        name, email, address, pincode, mobile = (
-            user_data.get('name'), user_data.get('email'), user_data.get('address'),
-            user_data.get('pincode'), user_data.get('mobile')
-        )
+        name = user_data.get('name')
+        email = user_data.get('email')
+        address = user_data.get('address')
+        pincode = user_data.get('pincode')
+        mobile = user_data.get('mobile')
+        # --- NEW: Get the FCM token from the request ---
+        fcm_token = user_data.get('fcmToken', '') # Default to empty string if not provided
 
         if not all([name, email, address, pincode, mobile]):
             return jsonify({'message': 'Missing required fields'}), 400
@@ -157,9 +198,16 @@ def register_user():
         if users_collection.find_one({'email': email}):
             return jsonify({'message': 'User with this email already exists'}), 409
 
+        # --- MODIFIED: Include fcmToken and profileImageUrl on creation ---
         users_collection.insert_one({
-            'name': name, 'email': email, 'address': address,
-            'pincode': pincode, 'mobile': mobile,
+            'name': name,
+            'email': email,
+            'address': address,
+            'pincode': pincode,
+            'mobile': mobile,
+            'fcmToken': fcm_token, # Add the token here
+            'profileImageUrl': '',
+            'walletBalance': 0
         })
         return jsonify({'message': 'User registered successfully!'}), 201
     except Exception as e:
@@ -181,7 +229,9 @@ def get_user_profile(user_email):
                     "email": user_data.get("email", ""),
                     "mobileNumber": user_data.get("mobile", ""),
                     "pinCode": user_data.get("pincode", ""),
-                    "address": user_data.get("address", "")
+                    "address": user_data.get("address", ""),
+                    "profileImageUrl": user_data.get("profileImageUrl", ""),
+                    "walletBalance": user_data.get("walletBalance", 0)
                 }
             }), 200
         else:
@@ -224,6 +274,52 @@ def update_user_profile(user_email):
     except Exception as e:
         print(f"❌ Error updating user: {e}")
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
+@app.route('/api/profile/image', methods=['POST'])
+def upload_profile_image():
+    try:
+        # Check if the email is in the form part of the request
+        if 'email' not in request.form:
+            return jsonify({'success': False, 'message': 'No email provided in form data'}), 400
+
+        # Check if the file part is in the request
+        if 'profile_image' not in request.files:
+            return jsonify({'success': False, 'message': 'No image file found in request'}), 400
+
+        email = request.form['email']
+        file = request.files['profile_image']
+
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'No file selected'}), 400
+
+        if file:
+            # Sanitize the filename to prevent security issues
+            filename = secure_filename(file.filename)
+
+            # Create a unique filename to prevent overwriting files
+            unique_filename = f"{email.split('@')[0]}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}{os.path.splitext(filename)[1]}"
+
+            # Save the file to your E:/backend/uploads folder
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            file.save(file_path)
+
+            # Construct the URL that the app can use to access the image
+            # Make sure your IP address here is correct for your network
+            image_url = f"http://10.62.58.59:5000/uploads/{unique_filename}"
+
+            # Update the user's document in MongoDB with the new URL
+            users_collection.update_one(
+                {'email': email},
+                {'$set': {'profileImageUrl': image_url}}
+            )
+
+            return jsonify({'success': True, 'message': 'Profile image updated successfully', 'imageUrl': image_url}), 200
+
+    except Exception as e:
+        # Print the full error to the console for easier debugging
+        print(f"An error occurred during file upload: {e}")
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
 
 # --- Vehicle Management (No changes needed here) ---
 @app.route('/api/add_vehicle', methods=['POST'])
@@ -398,41 +494,233 @@ def get_user_vehicles(user_email):
             "message": f"Error fetching vehicles: {str(e)}"
         }), 500
 
-@app.route('/api/hosts/create', methods=['POST'])
-def create_hosting_session():
-    """Create or update a user's hosting session."""
+# --- Well-Wisher & SOS Endpoints ---
+
+@app.route('/api/users/search', methods=['GET'])
+def search_users():
+    try:
+        query = request.args.get('query', '')
+        if len(query) < 2:
+            return jsonify([]) # Return empty list if query is too short
+
+        # Search for users by name or email (case-insensitive)
+        users_cursor = users_collection.find(
+            {"$or": [
+                {"name": {"$regex": query, "$options": "i"}},
+                {"email": {"$regex": query, "$options": "i"}}
+            ]},
+            {"name": 1, "email": 1, "profileImageUrl": 1, "_id": 0} # Projection
+        ).limit(10)
+
+        users = list(users_cursor)
+        return jsonify(users), 200
+    except Exception as e:
+        return jsonify({"message": f"An error occurred: {e}"}), 500
+
+
+@app.route('/api/well_wishers/add', methods=['POST'])
+def add_well_wisher():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid data"}), 400
+        user_email = data.get('user_email')
+        wisher_email = data.get('wisher_email')
 
-        required_fields = ['userId', 'location', 'socketType', 'availableUntil', 'pricePerHour', 'contactDetails']
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
+        if not user_email or not wisher_email:
+            return jsonify({'success': False, 'message': 'User email and wisher email are required'}), 400
 
-        user_id = data['userId']
+        # Prevent adding oneself
+        if user_email == wisher_email:
+            return jsonify({'success': False, 'message': 'You cannot add yourself as a well-wisher'}), 400
 
-        session_data = {
-            "userId": user_id,
-            "isHosting": data.get('isHosting', False),
-            "location": data['location'],
-            "socketType": data['socketType'],
-            "pricePerHour": data['pricePerHour'],
-            "contactDetails": data['contactDetails'],
-            "availableUntil": datetime.datetime.fromisoformat(data['availableUntil'].replace('Z', '+00:00')),
-            "createdAt": datetime.datetime.now(datetime.timezone.utc)
-        }
+        # Check if the relationship already exists
+        existing = well_wishers_collection.find_one({
+            'user_email': user_email,
+            'wisher_email': wisher_email,
+        })
+        if existing:
+            return jsonify({'success': False, 'message': 'This user is already a well-wisher'}), 409
 
-        host_collection.update_one(
-            {'userId': user_id},
-            {'$set': session_data},
-            upsert=True
+
+        well_wishers_collection.insert_one({
+            'user_email': user_email,
+            'wisher_email': wisher_email,
+        })
+        return jsonify({'success': True, 'message': 'Well-wisher added successfully'}), 201
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
+@app.route('/api/well_wishers/remove', methods=['POST'])
+def remove_well_wisher():
+    try:
+        data = request.get_json()
+        user_email = data.get('user_email')
+        wisher_email = data.get('wisher_email')
+
+        if not user_email or not wisher_email:
+            return jsonify({'success': False, 'message': 'User email and wisher email are required'}), 400
+
+        result = well_wishers_collection.delete_one({
+            'user_email': user_email,
+            'wisher_email': wisher_email,
+        })
+
+        if result.deleted_count > 0:
+            return jsonify({'success': True, 'message': 'Well-wisher removed successfully'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'Well-wisher not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
+@app.route('/api/well_wishers/<string:user_email>', methods=['GET'])
+def get_well_wishers(user_email):
+    try:
+        wishers_cursor = well_wishers_collection.find({'user_email': user_email})
+        wisher_emails = [w['wisher_email'] for w in wishers_cursor]
+
+        # Fetch details for each well-wisher
+        wishers_details = list(users_collection.find(
+            {"email": {"$in": wisher_emails}},
+            {"name": 1, "email": 1, "profileImageUrl": 1, "_id": 0}
+        ))
+
+        return jsonify({'success': True, 'well_wishers': wishers_details}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
+@app.route('/api/sos/trigger', methods=['POST'])
+def trigger_sos():
+    try:
+        data = request.get_json()
+        user_email = data.get('user_email')
+        location = data.get('location', 'an unknown location') # Get location from the app
+
+        if not user_email:
+            return jsonify({'success': False, 'message': 'User email is required'}), 400
+
+        user = users_collection.find_one({"email": user_email})
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        wishers_cursor = well_wishers_collection.find({'user_email': user_email})
+        wisher_emails = [w['wisher_email'] for w in wishers_cursor]
+
+        if not wisher_emails:
+            return jsonify({'success': True, 'message': 'SOS triggered, but you have no well-wishers to notify.'}), 200
+
+        # Find the FCM tokens of the well-wishers
+        wisher_users = users_collection.find({"email": {"$in": wisher_emails}})
+        recipient_tokens = [u['fcmToken'] for u in wisher_users if 'fcmToken' in u]
+
+        if not recipient_tokens:
+            return jsonify({'success': True, 'message': 'SOS triggered, but your well-wishers have not set up notifications.'}), 200
+
+        # Construct the notification message
+        notification_message = messaging.MulticastMessage(
+            notification=messaging.Notification(
+                title='SOS Alert from Osmion!',
+                body=f"{user.get('name', 'A user')} has triggered an SOS alert from {location}. Please check on them."
+            ),
+            tokens=recipient_tokens,
         )
 
-        return jsonify({"message": "Hosting session created/updated successfully"}), 201
+        # Send the message
+        messaging.send_each_for_multicast(notification_message)
+        print(f"SOS notification sent to {len(recipient_tokens)} well-wishers for {user_email}")
+
+        return jsonify({'success': True, 'message': 'SOS alert sent to your well-wishers!'}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error triggering SOS: {e}")
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
+# --- NEW: Transaction Endpoints ---
+
+@app.route('/api/transactions/create', methods=['POST'])
+def create_transaction():
+    try:
+        data = request.get_json()
+        user_email = data.get('user_email')
+        station_name = data.get('station_name')
+        amount = data.get('amount')
+        payment_method = data.get('payment_method')
+
+        if not all([user_email, station_name, amount, payment_method]):
+            return jsonify({'success': False, 'message': 'Missing required transaction fields'}), 400
+
+        # --- NEW: Check user's balance before proceeding ---
+        user = users_collection.find_one({'email': user_email})
+        if not user or user.get('walletBalance', 0) < amount:
+            return jsonify({'success': False, 'message': 'Insufficient wallet balance'}), 402
+
+        # --- NEW: Deduct amount from wallet ---
+        # We use $inc with a negative number to subtract
+        users_collection.update_one(
+            {'email': user_email},
+            {'$inc': {'walletBalance': -amount}}
+        )
+
+        # Record the transaction
+        transaction = {
+            'user_email': user_email,
+            'station_name': station_name,
+            'amount': amount,
+            'payment_method': payment_method,
+            'timestamp': datetime.datetime.now(datetime.timezone.utc)
+        }
+        transactions_collection.insert_one(transaction)
+
+        return jsonify({'success': True, 'message': 'Transaction recorded successfully'}), 201
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
+@app.route('/api/transactions/<string:user_email>', methods=['GET'])
+def get_transactions(user_email):
+    try:
+        # Fetch transactions for the user and sort by newest first
+        transactions_cursor = transactions_collection.find(
+            {'user_email': user_email}
+        ).sort('timestamp', -1)
+
+        transactions = []
+        for trans in transactions_cursor:
+            # Manually serialize the document to handle ObjectId and datetime
+            transactions.append({
+                'station_name': trans.get('station_name'),
+                'amount': trans.get('amount'),
+                'payment_method': trans.get('payment_method'),
+                'timestamp': trans.get('timestamp').isoformat()
+            })
+
+        return jsonify({'success': True, 'transactions': transactions}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
+
+@app.route('/api/wallet/add', methods=['POST'])
+def add_to_wallet():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        amount = data.get('amount')
+
+        if not email or not isinstance(amount, (int, float)):
+            return jsonify({'success': False, 'message': 'Email and a valid amount are required'}), 400
+
+        # Use $inc to atomically increase the balance
+        result = users_collection.update_one(
+            {'email': email},
+            {'$inc': {'walletBalance': amount}}
+        )
+
+        if result.matched_count == 0:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Fetch the updated user to return the new balance
+        updated_user = users_collection.find_one({'email': email})
+        new_balance = updated_user.get('walletBalance', 0)
+
+        return jsonify({'success': True, 'message': f'Added {amount} successfully', 'newBalance': new_balance}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'An error occurred: {e}'}), 500
 
 # --- Run the App ---
 if __name__ == '__main__':

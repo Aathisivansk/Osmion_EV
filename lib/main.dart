@@ -1,20 +1,54 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'auth/login.dart';
+import 'home/home.dart';
+import 'services/notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // ADD THIS IMPORT
 
-void main() {
-  runApp(const MainApp());
+// --- ADD THIS FUNCTION AT THE TOP LEVEL ---
+// It must be outside of any class to work in the background.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // If you're going to use other Firebase services in the background, like Firestore,
+  // make sure you call `initializeApp` before using them.
+  await Firebase.initializeApp();
+
+  print("Handling a background message: ${message.messageId}");
+  print("BG Notification Title: ${message.notification?.title}");
+  print("BG Notification Body: ${message.notification?.body}");
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // --- REGISTER THE BACKGROUND HANDLER ---
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  await NotificationService().initialize();
+
+  final prefs = await SharedPreferences.getInstance();
+  final bool isLoggedIn = prefs.getString('user_email') != null;
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
+}
+
+class MyApp extends StatelessWidget {
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Osmion EV',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        fontFamily: 'Inter',
       ),
+      home: isLoggedIn ? const MainScreen() : const LoginScreen(),
     );
   }
 }

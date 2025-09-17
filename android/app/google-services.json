@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "984669052257",
+    "project_id": "osmion-af7cc",
+    "storage_bucket": "osmion-af7cc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:984669052257:android:770085674c6c6083d67920",
+        "android_client_info": {
+          "package_name": "com.example.osmion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBlNQUV4dDiNme10Dh4Suah-6JUiDzDQs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

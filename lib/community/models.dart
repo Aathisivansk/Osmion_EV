@@ -1,4 +1,4 @@
-// lib/models.dart
+// lib/stations_detail.dart
 
 class Post {
   final String id;

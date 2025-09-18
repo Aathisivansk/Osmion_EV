@@ -12,20 +12,26 @@ import 'package:osmion/slot_booking/stations_detail.dart';
 class ChargingStation {
   final String id;
   final String name;
+  final String address;
   final double latitude;
   final double longitude;
   final List<dynamic> chargers;
   final List<String> amenities;
   final double rating;
+  final String timing;
+  final bool isOpen;
 
   ChargingStation({
     required this.id,
     required this.name,
+    required this.address,
     required this.latitude,
     required this.longitude,
     required this.chargers,
     required this.amenities,
     required this.rating,
+    required this.timing,
+    required this.isOpen,
   });
 
   factory ChargingStation.fromJson(Map<String, dynamic> json) {
@@ -34,11 +40,14 @@ class ChargingStation {
     return ChargingStation(
       id: idValue ?? '',
       name: json['stationName'] ?? 'Unknown Station',
+      address: json['address'] ?? 'No address provided',
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       chargers: json['chargers'] ?? [],
       amenities: List<String>.from(json['amenities'] ?? []),
       rating: (json['stationRating'] as num?)?.toDouble() ?? 0.0,
+      timing: json['timing'] ?? 'N/A',
+      isOpen: json['isOpen'] ?? true,
     );
   }
 }
@@ -120,12 +129,8 @@ class _SlotBookingPageState extends State<SlotBookingPage> {
     });
   }
 
-  // This function sends the user's connector type to the server to get filtered results
   Future<void> _fetchChargingStations() async {
     final connector = widget.userVehicleConnector;
-
-    // Build the URL with a query parameter to filter by connector
-    // --- IMPORTANT: Replace with your computer's actual IP address ---
     final url = Uri.parse('http://10.62.58.114:5000/api/stations?connector=$connector');
 
     try {
@@ -142,7 +147,6 @@ class _SlotBookingPageState extends State<SlotBookingPage> {
     }
   }
 
-  // This function now uses a single unified blue color for all station markers
   void _buildMarkers() {
     final List<Marker> loadedMarkers = [];
     for (var station in _allStations) {
@@ -330,7 +334,7 @@ class StationDetailsSheet extends StatelessWidget {
               ...station.chargers.map((charger) =>
                   ListTile(title: Text(charger['chargerName']),
                     subtitle: Text(charger['chargerType']),
-                    trailing: Text(charger['isAvailable'] ? 'Available' : 'Occupied'),
+                    trailing: Text(charger['isAvailable'] ? 'Available' : 'Occupied', style: TextStyle(color: charger['isAvailable'] ? Colors.green : Colors.red)),
                   )
               ).toList(),
               const Divider(height: 32),
@@ -340,21 +344,26 @@ class StationDetailsSheet extends StatelessWidget {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
+                  // --- THIS IS THE FIX ---
+                  // Use the actual 'station' data passed to this widget
                   Navigator.push(
                       context,
                       MaterialPageRoute(
                           builder: (context) => StationDetailsPage(
                               station: StationDetails(
                                   name: station.name,
-                                  address: 'address',
+                                  address: station.address,
                                   rating: station.rating,
-                                  isOpen: true,
-                                  distanceInKm: 2.5,
-                                  timing: '24 Hours',
-                                  chargers: [
-                                    Charger(name: 'Charger A', type: 'CCS-2', tariff: '21/kwh', rating: 4.5, isAvailable: true),
-                                    Charger(name: 'Charger B', type: 'Type 2 AC', tariff: '18/kwh', rating: 4, isAvailable: false)
-                                  ]
+                                  isOpen: station.isOpen,
+                                  distanceInKm: distanceInMeters != null ? (distanceInMeters! / 1000) : 0.0,
+                                  timing: station.timing,
+                                  chargers: (station.chargers as List<dynamic>).map((c) => Charger(
+                                    name: c['chargerName'],
+                                    type: c['chargerType'],
+                                    tariff: c['tariff'],
+                                    rating: (c['chargerRating'] as num?)?.toDouble() ?? 0.0,
+                                    isAvailable: c['isAvailable'],
+                                  )).toList()
                               )
                           )
                       )
